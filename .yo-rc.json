@@ -1,0 +1,22 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "whichFolder": "subdir",
+    "solutionName": "recruitment-tracker",
+    "skipFeatureDeployment": true,
+    "useGulp": false,
+    "componentType": "webpart",
+    "template": "react",
+    "componentName": "RecruitmentTracker",
+    "plusBeta": false,
+    "isCreatingSolution": true,
+    "nodeVersion": "22.19.0",
+    "sdksVersions": {},
+    "version": "1.22.2",
+    "libraryName": "recruitment-tracker",
+    "libraryId": "d6f68c22-844f-44b3-8473-4bd71393db69",
+    "environment": "spo",
+    "packageManager": "npm",
+    "solutionShortDescription": "recruitment-tracker description",
+    "isDomainIsolated": false
+  }
+}

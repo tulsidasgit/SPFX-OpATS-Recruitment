@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/package-solution.schema.json",
+  "solution": {
+    "name": "recruitment-tracker-client-side-solution",
+    "id": "d6f68c22-844f-44b3-8473-4bd71393db69",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "developer": {
+      "name": "",
+      "websiteUrl": "",
+      "privacyUrl": "",
+      "termsOfUseUrl": "",
+      "mpnId": "Undefined-1.22.2"
+    },
+    "metadata": {
+      "shortDescription": {
+        "default": "recruitment-tracker description"
+      },
+      "longDescription": {
+        "default": "recruitment-tracker description"
+      },
+      "screenshotPaths": [],
+      "videoUrl": "",
+      "categories": []
+    },
+    "features": [
+      {
+        "title": "recruitment-tracker Feature",
+        "description": "The feature that activates elements of the recruitment-tracker solution.",
+        "id": "3b3dfca6-978a-4f3a-9038-269845715cdc",
+        "version": "1.0.0.0"
+      }
+    ]
+  },
+  "paths": {
+    "zippedPackage": "solution/recruitment-tracker.sppkg"
+  }
+}
