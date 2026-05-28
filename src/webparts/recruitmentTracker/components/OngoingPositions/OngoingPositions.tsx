@@ -24,6 +24,7 @@ interface IOngoingPositionsProps {
   sp: SPFI;
   graphService: GraphService;
   currentUser: ICurrentUser;
+  applyBaseUrl?: string;
 }
 
 interface IOngoingPositionsState {
@@ -275,10 +276,45 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
           <div className={styles.jobDescSnippet}>{job.jobDescription}</div>
         )}
 
+        {/* External apply link */}
+        {this.props.applyBaseUrl && (() => {
+          const applyUrl =
+            `${this.props.applyBaseUrl}?jobId=${job.id}` +
+            `&title=${encodeURIComponent(job.title)}` +
+            `&dept=${encodeURIComponent(job.department || '')}` +
+            `&exp=${encodeURIComponent(job.experience || '')}` +
+            `&loc=${encodeURIComponent(job.jobLocation || '')}`;
+          return (
+            <div className={styles.externalApplyRow}>
+              <Icon iconName="Link" className={styles.externalApplyIcon} />
+              <span className={styles.externalApplyLabel}>External candidates:</span>
+              <a
+                href={applyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.externalApplyLink}
+                title={applyUrl}
+              >
+                Apply Now
+              </a>
+              <button
+                className={styles.copyLinkBtn}
+                title="Copy application link"
+                onClick={e => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(applyUrl).catch(() => undefined);
+                }}
+              >
+                <Icon iconName="Copy" />
+              </button>
+            </div>
+          );
+        })()}
+
         <div className={styles.cardFooter}>
           <span className={`${styles.daysLabel} ${daysClass}`}>{daysText}</span>
           <PrimaryButton
-            text="Refer / Apply"
+            text="Refer a Colleague"
             iconProps={{ iconName: 'People' }}
             onClick={() => this._openApplyPanel(job)}
             styles={{ root: { background: '#fd800b', borderColor: '#fd800b' } }}

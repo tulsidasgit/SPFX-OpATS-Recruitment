@@ -77,7 +77,7 @@ export default class RecruitmentTracker extends React.Component<
           </PivotItem>
 
           <PivotItem headerText="Ongoing Positions" itemKey="ongoingPositions" itemIcon="Briefcase">
-            <OngoingPositions sp={sp} graphService={graphService} currentUser={currentUser} />
+            <OngoingPositions sp={sp} graphService={graphService} currentUser={currentUser} applyBaseUrl={applyBaseUrl} />
           </PivotItem>
 
           <PivotItem headerText="Track Progress" itemKey="trackProgress" itemIcon="ClipboardList">
