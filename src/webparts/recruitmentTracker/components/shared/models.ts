@@ -44,6 +44,10 @@ export interface ICandidate {
   hrFeedback: string;
   recommendation: 'Recommended' | 'Maybe' | 'Not Recommended' | '';
   experienceMatch: 'meets' | 'exceeds' | 'below' | '';
+  referredBy?: string;
+  referrerEmail?: string;
+  referrerEmployeeId?: string;
+  referrerDesignation?: string;
 }
 
 export interface IInterview {

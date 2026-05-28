@@ -14,6 +14,7 @@ import {
 
 export class SpService {
   private _sp: SPFI;
+  private _webUrl: string | null = null;
 
   constructor(sp: SPFI) {
     this._sp = sp;
@@ -65,7 +66,7 @@ export class SpService {
     try {
       const items = await this._sp.web.lists
         .getByTitle('JobOpenings')
-        .items.select('Id', 'Title', 'Department', 'JobTitle', 'RequiredSkills', 'GoodToHaveSkills', 'JobLocation', 'JobType', 'Experience', 'DueDate', 'Status', 'PostedBy', 'LinkedInUrl', 'JobDescription', 'ApplicationFormUrl')
+        .items.select('Id', 'Title', 'Department', 'JobTitle', 'RequiredSkills', 'GoodToHaveSkills', 'JobLocation', 'JobType', 'Experience', 'DueDate', 'Status', 'PostedBy', 'LinkedInUrl', 'JobDescription')
         .filter("Status eq 'Open' or Status eq 'In Progress'")
         .orderBy('Created', false)();
 
@@ -79,7 +80,7 @@ export class SpService {
     try {
       const items = await this._sp.web.lists
         .getByTitle('JobOpenings')
-        .items.select('Id', 'Title', 'Department', 'JobTitle', 'RequiredSkills', 'GoodToHaveSkills', 'JobLocation', 'JobType', 'Experience', 'DueDate', 'Status', 'PostedBy', 'LinkedInUrl', 'JobDescription', 'ApplicationFormUrl')
+        .items.select('Id', 'Title', 'Department', 'JobTitle', 'RequiredSkills', 'GoodToHaveSkills', 'JobLocation', 'JobType', 'Experience', 'DueDate', 'Status', 'PostedBy', 'LinkedInUrl', 'JobDescription')
         .filter("Status eq 'Closed'")
         .orderBy('Modified', false)();
 
@@ -125,7 +126,7 @@ export class SpService {
     try {
       const items = await this._sp.web.lists
         .getByTitle('JobOpenings')
-        .items.select('Id', 'Title', 'Department', 'JobTitle', 'RequiredSkills', 'GoodToHaveSkills', 'JobLocation', 'JobType', 'Experience', 'DueDate', 'Status', 'PostedBy', 'LinkedInUrl', 'JobDescription', 'ApplicationFormUrl')
+        .items.select('Id', 'Title', 'Department', 'JobTitle', 'RequiredSkills', 'GoodToHaveSkills', 'JobLocation', 'JobType', 'Experience', 'DueDate', 'Status', 'PostedBy', 'LinkedInUrl', 'JobDescription')
         .filter(`Id eq ${id}`)
         .top(1)();
       if (items.length === 0) throw new Error(`Job opening #${id} not found.`);
@@ -140,8 +141,8 @@ export class SpService {
       await this._sp.web.lists.getByTitle('JobOpenings').items.getById(id).update({
         ApplicationFormUrl: url,
       });
-    } catch (err) {
-      throw new Error(`Failed to save application URL: ${(err as Error).message}`);
+    } catch {
+      // Silently skip — ApplicationFormUrl column may not exist on all tenants
     }
   }
 
@@ -214,7 +215,22 @@ export class SpService {
         Recommendation: candidate.recommendation,
         ExperienceMatch: candidate.experienceMatch,
       });
-      return (result.data as { Id: number }).Id;
+      const candidateId = (result.data as { Id: number }).Id;
+
+      // Referral fields are stored separately; silently skip if columns don't exist yet
+      if (candidate.referredBy || candidate.referrerEmployeeId) {
+        try {
+          await this._sp.web.lists.getByTitle('Candidates').items.getById(candidateId).update({
+            ReferredBy: candidate.referredBy ?? '',
+            ReferrerEmail: candidate.referrerEmail ?? '',
+            ReferrerEmployeeId: candidate.referrerEmployeeId ?? '',
+            ReferrerDesignation: candidate.referrerDesignation ?? '',
+          });
+        } catch {
+          // Columns not yet created — referral data not saved to SP, but record exists
+        }
+      }
+      return candidateId;
     } catch (err) {
       throw new Error(`Failed to create candidate record: ${(err as Error).message}`);
     }
@@ -289,15 +305,16 @@ export class SpService {
     const sanitize = (s: string): string => s.replace(/[^a-zA-Z0-9_\- ]/g, '').trim();
     const deptFolder = sanitize(department);
     const jtFolder = sanitize(jobTitle);
-    const folderPath = `Resumes/${deptFolder}/${jtFolder}`;
+    const basePath = `Resumes/${deptFolder}/${jtFolder}`;
 
-    try {
-      await this._sp.web.folders.addUsingPath(folderPath, true);
-      return folderPath;
-    } catch {
-      // Folder may already exist — return path anyway
-      return folderPath;
+    for (const path of [basePath, `${basePath}/Referred`, `${basePath}/Direct`]) {
+      try {
+        await this._sp.web.folders.addUsingPath(path, true);
+      } catch {
+        // Folder may already exist — continue
+      }
     }
+    return basePath;
   }
 
   // ── JD Template ───────────────────────────────────────────────────────────
@@ -334,6 +351,46 @@ export class SpService {
     } catch {
       return ''; // Template unreadable — Claude generates without it
     }
+  }
+
+  // ── Resume upload ──────────────────────────────────────────────────────────
+
+  public async uploadResume(
+    department: string,
+    jobTitle: string,
+    file: File,
+    candidateName: string,
+    subfolder: 'Referred' | 'Direct' = 'Direct'
+  ): Promise<string> {
+    await this.ensureResumeFolder(department, jobTitle);
+    const webUrl = await this._getWebUrl();
+    const sanitize = (s: string): string => s.replace(/[^a-zA-Z0-9_\- ]/g, '').trim();
+    const basePath = `Resumes/${sanitize(department)}/${sanitize(jobTitle)}`;
+    const sanitizedName = candidateName
+      .replace(/[^a-zA-Z0-9_\- ]/g, '')
+      .trim()
+      .replace(/ /g, '_');
+    const ext = file.name.split('.').pop() ?? 'pdf';
+    const fileName = `${sanitizedName}_${Date.now()}.${ext}`;
+    const serverRelFolderPath = `${webUrl}/${basePath}/${subfolder}`;
+
+    const buffer = await file.arrayBuffer();
+    const result = await this._sp.web
+      .getFolderByServerRelativePath(serverRelFolderPath)
+      .files.addUsingPath(fileName, buffer, { Overwrite: true });
+
+    return (result.data as { ServerRelativeUrl: string }).ServerRelativeUrl;
+  }
+
+  // ── Private helpers ────────────────────────────────────────────────────────
+
+  private async _getWebUrl(): Promise<string> {
+    if (!this._webUrl) {
+      const info = await this._sp.web.select('ServerRelativeUrl')();
+      this._webUrl = (info as unknown as { ServerRelativeUrl: string })
+        .ServerRelativeUrl.replace(/\/$/, '');
+    }
+    return this._webUrl;
   }
 
   // ── Private mappers ────────────────────────────────────────────────────────
@@ -373,6 +430,10 @@ export class SpService {
       hrFeedback: (i.HRFeedback as string) ?? '',
       recommendation: (i.Recommendation as ICandidate['recommendation']) ?? '',
       experienceMatch: (i.ExperienceMatch as ICandidate['experienceMatch']) ?? '',
+      referredBy: (i.ReferredBy as string) ?? undefined,
+      referrerEmail: (i.ReferrerEmail as string) ?? undefined,
+      referrerEmployeeId: (i.ReferrerEmployeeId as string) ?? undefined,
+      referrerDesignation: (i.ReferrerDesignation as string) ?? undefined,
     };
   }
 

@@ -169,6 +169,67 @@ export class EmailService {
     });
   }
 
+  // ── 5. New application received from Ongoing Positions portal ────────────
+
+  public async notifyHRNewApplication(
+    job: IJobOpening,
+    candidateName: string,
+    email: string,
+    phone: string,
+    resumeUrl: string,
+    referral?: { referredBy: string; referrerEmail: string; employeeId: string; designation: string }
+  ): Promise<void> {
+    const dueDate = job.dueDate ? new Date(job.dueDate).toLocaleDateString('en-GB') : '—';
+    const resumeLink = resumeUrl
+      ? `<div class="field"><div class="label">Resume (${referral ? 'Referred' : 'Direct'})</div>
+         <div class="value"><a href="https://yourtenant.sharepoint.com${resumeUrl}" style="color:#0078d4">Download Resume</a></div></div>`
+      : '';
+
+    const referralSection = referral
+      ? `<hr class="divider"/>
+         <h2 style="color:#fd800b">Referred By</h2>
+         <div class="field"><div class="label">Employee Name</div><div class="value"><strong>${referral.referredBy}</strong></div></div>
+         <div class="field"><div class="label">Employee Email</div><div class="value"><a href="mailto:${referral.referrerEmail}" style="color:#0078d4">${referral.referrerEmail}</a></div></div>
+         <div class="field"><div class="label">Employee ID</div><div class="value">${referral.employeeId || '—'}</div></div>
+         <div class="field"><div class="label">Designation</div><div class="value">${referral.designation || '—'}</div></div>`
+      : '';
+
+    const sourceLabel = referral
+      ? `<span class="badge badge-orange">Referral</span>`
+      : `<span class="badge badge-blue">Direct Application</span>`;
+
+    const body = emailShell(
+      'New Job Application Received',
+      `<h2>New Application: ${job.title} &nbsp;${sourceLabel}</h2>
+       <p>A candidate has been ${referral ? 'referred' : 'submitted an application'} via the <strong>Ongoing Positions</strong> portal.</p>
+       <hr class="divider"/>
+       <h2>Candidate Details</h2>
+       <div class="field"><div class="label">Full Name</div><div class="value">${candidateName}</div></div>
+       <div class="field"><div class="label">Email</div><div class="value"><a href="mailto:${email}" style="color:#0078d4">${email}</a></div></div>
+       <div class="field"><div class="label">Phone</div><div class="value">${phone || '—'}</div></div>
+       ${resumeLink}
+       ${referralSection}
+       <hr class="divider"/>
+       <h2>Position Details</h2>
+       <div class="field"><div class="label">Job Title</div><div class="value">${job.title}</div></div>
+       <div class="field"><div class="label">Department</div><div class="value">${job.department}</div></div>
+       <div class="field"><div class="label">Location</div><div class="value">${job.jobLocation || '—'}</div></div>
+       <div class="field"><div class="label">Experience Required</div><div class="value">${job.experience}</div></div>
+       <div class="field"><div class="label">Due Date</div><div class="value">${dueDate}</div></div>
+       <hr class="divider"/>
+       <p>Please review the application in the Recruitment Tracker and run AI screening.</p>
+       <a class="btn" href="${SITE_URL}">Open Recruitment Tracker</a>`
+    );
+
+    await this._graph.sendEmail({
+      to: HR_EMAILS,
+      subject: referral
+        ? `[OpATS] Referral: ${candidateName} → ${job.title} (by ${referral.referredBy})`
+        : `[OpATS] New Application: ${candidateName} → ${job.title} (${job.department})`,
+      bodyHtml: body,
+    });
+  }
+
   // ── 4. All resumes screened — fitment report ready ────────────────────────
 
   public async notifyHRFitmentReady(

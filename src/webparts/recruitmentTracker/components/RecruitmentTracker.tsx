@@ -10,6 +10,7 @@ import {
 import type { IRecruitmentTrackerProps } from './IRecruitmentTrackerProps';
 import { PostJobForm } from './PostJob/PostJobForm';
 import { TrackProgress } from './TrackProgress/TrackProgress';
+import { OngoingPositions } from './OngoingPositions/OngoingPositions';
 
 interface IRecruitmentTrackerState {
   activeTab: string;
@@ -73,6 +74,10 @@ export default class RecruitmentTracker extends React.Component<
               currentUser={currentUser}
               applyBaseUrl={applyBaseUrl}
             />
+          </PivotItem>
+
+          <PivotItem headerText="Ongoing Positions" itemKey="ongoingPositions" itemIcon="Briefcase">
+            <OngoingPositions sp={sp} graphService={graphService} currentUser={currentUser} />
           </PivotItem>
 
           <PivotItem headerText="Track Progress" itemKey="trackProgress" itemIcon="ClipboardList">

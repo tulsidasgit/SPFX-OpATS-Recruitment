@@ -1,0 +1,361 @@
+.container {
+  padding: 24px;
+  max-width: 1200px;
+}
+
+.pageHeader {
+  margin-bottom: 24px;
+}
+
+.pageTitle {
+  color: #323130;
+  display: block;
+}
+
+.pageSubtitle {
+  color: #605e5c;
+  display: block;
+  margin-top: 4px;
+}
+
+.loadingState {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64px 0;
+  gap: 8px;
+  color: #605e5c;
+}
+
+.emptyIcon {
+  font-size: 48px;
+  color: #c8c6c4;
+  margin-bottom: 8px;
+}
+
+.jobGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+// ── Job Card ─────────────────────────────────────────────────────────────────
+
+.jobCard {
+  background: #fff;
+  border: 1px solid #edebe9;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    border-color: #fd800b;
+  }
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.jobTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #323130;
+  line-height: 1.35;
+}
+
+.jobMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.metaChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #605e5c;
+  background: #f3f2f1;
+  border-radius: 12px;
+  padding: 3px 10px;
+}
+
+// ── Status badges ─────────────────────────────────────────────────────────────
+
+.statusBadge {
+  flex-shrink: 0;
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.badgeOpen {
+  background: #dff6dd;
+  color: #107c10;
+}
+
+.badgeInProgress {
+  background: #fff4ce;
+  color: #8a8000;
+}
+
+// ── Skills row ────────────────────────────────────────────────────────────────
+
+.skillsRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.skillsRowLabel {
+  font-size: 12px;
+  color: #605e5c;
+  flex-shrink: 0;
+  line-height: 22px;
+  font-weight: 500;
+}
+
+.skillChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.skillChip {
+  display: inline-block;
+  background: #deecf9;
+  color: #0078d4;
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.skillChipMore {
+  display: inline-block;
+  background: #f3f2f1;
+  color: #605e5c;
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+// ── Job description snippet ───────────────────────────────────────────────────
+
+.jobDescSnippet {
+  font-size: 13px;
+  color: #605e5c;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+// ── Card footer ───────────────────────────────────────────────────────────────
+
+.cardFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid #f3f2f1;
+}
+
+.daysLabel {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.daysGood {
+  color: #107c10;
+}
+
+.daysWarning {
+  color: #e36c09;
+}
+
+.daysClosed {
+  color: #a80000;
+}
+
+// ── Apply Panel ───────────────────────────────────────────────────────────────
+
+.panelJobSummary {
+  background: #f3f2f1;
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin-bottom: 4px;
+  border-left: 3px solid #fd800b;
+}
+
+.panelJobTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #323130;
+}
+
+.panelJobMeta {
+  font-size: 12px;
+  color: #605e5c;
+  margin-top: 4px;
+}
+
+// ── File upload drop-zone ─────────────────────────────────────────────────────
+
+.fileLabel {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #323130;
+  margin-bottom: 6px;
+}
+
+.required {
+  color: #a80000;
+}
+
+.dropZone {
+  border: 2px dashed #c8c6c4;
+  border-radius: 6px;
+  padding: 28px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  text-align: center;
+  user-select: none;
+
+  &:hover {
+    border-color: #fd800b;
+    background: #fff9f5;
+  }
+}
+
+.dropZoneHasFile {
+  border-color: #107c10;
+  background: #f3faf3;
+}
+
+.dropPrompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: #605e5c;
+}
+
+.uploadIcon {
+  font-size: 28px;
+  color: #a19f9d;
+  margin-bottom: 4px;
+}
+
+.fileHint {
+  font-size: 11px;
+  color: #a19f9d;
+}
+
+.fileSelected {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #107c10;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+// ── Folder note ──────────────────────────────────────────────────────────────
+
+.folderNote {
+  font-size: 11px;
+  color: #605e5c;
+  margin: 6px 0 0;
+}
+
+// ── Panel section headings & dividers ────────────────────────────────────────
+
+.sectionDivider {
+  border: none;
+  border-top: 1px solid #edebe9;
+  margin: 20px 0 4px;
+}
+
+.sectionHeading {
+  font-size: 13px;
+  font-weight: 600;
+  color: #323130;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+// ── Referrer read-only row ────────────────────────────────────────────────────
+
+.referrerReadonlyRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.referrerChip {
+  background: #f3f2f1;
+  border-radius: 6px;
+  padding: 8px 12px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.referrerChipLabel {
+  display: block;
+  font-size: 11px;
+  color: #605e5c;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 2px;
+}
+
+.referrerChipValue {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #323130;
+  word-break: break-all;
+}
+
+.removeFile {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #a80000;
+  font-size: 18px;
+  padding: 0 4px;
+  line-height: 1;
+  font-weight: 600;
+
+  &:hover {
+    color: #750b1c;
+  }
+}
