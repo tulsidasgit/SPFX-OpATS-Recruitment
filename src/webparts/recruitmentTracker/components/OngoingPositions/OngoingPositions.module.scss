@@ -174,58 +174,62 @@
   overflow: hidden;
 }
 
-// ── External apply link ───────────────────────────────────────────────────────
+// ── Apply Now row (always visible on every card) ──────────────────────────────
 
-.externalApplyRow {
+.applyNowRow {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: #f0f8ff;
+  gap: 8px;
+  background: #f0f6ff;
   border: 1px dashed #c7e0f4;
   border-radius: 6px;
-  padding: 7px 12px;
+  padding: 8px 12px;
   font-size: 12px;
 }
 
-.externalApplyIcon {
+.applyNowIcon {
   font-size: 13px;
   color: #0078d4;
   flex-shrink: 0;
 }
 
-.externalApplyLabel {
+.applyNowLabel {
   color: #605e5c;
   flex-shrink: 0;
 }
 
-.externalApplyLink {
-  color: #0078d4;
-  text-decoration: none;
+.applyNowBtn {
+  background: #0078d4;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
   font-weight: 600;
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  padding: 4px 12px;
+  flex-shrink: 0;
 
   &:hover {
-    text-decoration: underline;
-    color: #005a9e;
+    background: #005a9e;
   }
 }
 
 .copyLinkBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   background: none;
-  border: none;
+  border: 1px solid #c8c6c4;
+  border-radius: 4px;
   cursor: pointer;
   color: #605e5c;
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-size: 14px;
-  line-height: 1;
-  flex-shrink: 0;
+  font-size: 11px;
+  padding: 3px 8px;
+  margin-left: auto;
 
   &:hover {
     background: #deecf9;
+    border-color: #0078d4;
     color: #0078d4;
   }
 }

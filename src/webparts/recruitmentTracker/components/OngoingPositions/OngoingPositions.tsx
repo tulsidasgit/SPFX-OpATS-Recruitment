@@ -32,28 +32,36 @@ interface IOngoingPositionsState {
   loading: boolean;
   error: string;
 
+  // ── Referral panel ──────────────────────────────────────────────────────────
   applyPanelOpen: boolean;
   applyingToJob: IJobOpening | undefined;
-
-  // Candidate details
   candidateName: string;
   email: string;
   phone: string;
   resumeFile: File | undefined;
-
-  // Referrer details (pre-filled from logged-in user)
   referrerEmployeeId: string;
   referrerDesignation: string;
-
   submitting: boolean;
   submitError: string;
   successJobTitle: string;
+
+  // ── Direct apply panel ──────────────────────────────────────────────────────
+  directPanelOpen: boolean;
+  directApplyingToJob: IJobOpening | undefined;
+  directName: string;
+  directEmail: string;
+  directPhone: string;
+  directResumeFile: File | undefined;
+  directSubmitting: boolean;
+  directSubmitError: string;
+  directSuccessTitle: string;
 }
 
 export class OngoingPositions extends React.Component<IOngoingPositionsProps, IOngoingPositionsState> {
   private _spService: SpService;
   private _emailService: EmailService;
   private _fileInputRef = React.createRef<HTMLInputElement>();
+  private _directFileInputRef = React.createRef<HTMLInputElement>();
 
   constructor(props: IOngoingPositionsProps) {
     super(props);
@@ -74,6 +82,15 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
       submitting: false,
       submitError: '',
       successJobTitle: '',
+      directPanelOpen: false,
+      directApplyingToJob: undefined,
+      directName: '',
+      directEmail: '',
+      directPhone: '',
+      directResumeFile: undefined,
+      directSubmitting: false,
+      directSubmitError: '',
+      directSuccessTitle: '',
     };
   }
 
@@ -81,7 +98,7 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
     await this._loadJobs();
   }
 
-  // ── Data loading ────────────────────────────────────────────────────────────
+  // ── Data loading ─────────────────────────────────────────────────────────────
 
   private async _loadJobs(): Promise<void> {
     this.setState({ loading: true, error: '' });
@@ -93,7 +110,7 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
     }
   }
 
-  // ── Panel ───────────────────────────────────────────────────────────────────
+  // ── Referral panel ────────────────────────────────────────────────────────────
 
   private _openApplyPanel(job: IJobOpening): void {
     this.setState({
@@ -114,8 +131,6 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
     this.setState({ applyPanelOpen: false, applyingToJob: undefined, submitError: '' });
   }
 
-  // ── Validation ──────────────────────────────────────────────────────────────
-
   private _isFormValid(): boolean {
     const { candidateName, email, resumeFile, referrerEmployeeId, referrerDesignation } = this.state;
     return (
@@ -126,8 +141,6 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
       !!referrerDesignation.trim()
     );
   }
-
-  // ── Submit ──────────────────────────────────────────────────────────────────
 
   private _onSubmit = async (): Promise<void> => {
     const {
@@ -140,7 +153,6 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
     this.setState({ submitting: true, submitError: '' });
 
     try {
-      // Upload to Referred sub-folder
       const resumeUrl = await this._spService.uploadResume(
         applyingToJob.department,
         applyingToJob.jobTitle,
@@ -149,7 +161,6 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
         'Referred'
       );
 
-      // Create candidate record with referral metadata
       await this._spService.createCandidate({
         jobOpeningId: applyingToJob.id,
         candidateName: candidateName.trim(),
@@ -169,7 +180,6 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
         referrerDesignation: referrerDesignation.trim(),
       });
 
-      // Notify HR with referral details
       try {
         await this._emailService.notifyHRNewApplication(
           applyingToJob,
@@ -199,7 +209,84 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
     }
   };
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
+  // ── Direct apply panel ────────────────────────────────────────────────────────
+
+  private _openDirectPanel(job: IJobOpening): void {
+    this.setState({
+      directPanelOpen: true,
+      directApplyingToJob: job,
+      directName: '',
+      directEmail: '',
+      directPhone: '',
+      directResumeFile: undefined,
+      directSubmitError: '',
+    });
+  }
+
+  private _closeDirectPanel(): void {
+    if (this.state.directSubmitting) return;
+    this.setState({ directPanelOpen: false, directApplyingToJob: undefined, directSubmitError: '' });
+  }
+
+  private _isDirectFormValid(): boolean {
+    const { directName, directEmail, directResumeFile } = this.state;
+    return !!directName.trim() && !!directEmail.trim() && !!directResumeFile;
+  }
+
+  private _onDirectSubmit = async (): Promise<void> => {
+    const { directApplyingToJob, directName, directEmail, directPhone, directResumeFile } = this.state;
+    if (!directApplyingToJob || !directResumeFile || !this._isDirectFormValid()) return;
+
+    this.setState({ directSubmitting: true, directSubmitError: '' });
+
+    try {
+      const resumeUrl = await this._spService.uploadResume(
+        directApplyingToJob.department,
+        directApplyingToJob.jobTitle,
+        directResumeFile,
+        directName,
+        'Direct'
+      );
+
+      await this._spService.createCandidate({
+        jobOpeningId: directApplyingToJob.id,
+        candidateName: directName.trim(),
+        email: directEmail.trim(),
+        phone: directPhone.trim(),
+        resumeUrl,
+        fitmentScore: 0,
+        matchingSkills: '',
+        missingSkills: '',
+        aiSummary: '',
+        hrFeedback: '',
+        recommendation: '',
+        experienceMatch: '',
+      });
+
+      try {
+        await this._emailService.notifyHRNewApplication(
+          directApplyingToJob,
+          directName.trim(),
+          directEmail.trim(),
+          directPhone.trim(),
+          resumeUrl
+        );
+      } catch {
+        // email failure is non-fatal
+      }
+
+      this.setState({
+        directSubmitting: false,
+        directSuccessTitle: directApplyingToJob.title,
+        directPanelOpen: false,
+        directApplyingToJob: undefined,
+      });
+    } catch (err) {
+      this.setState({ directSubmitting: false, directSubmitError: (err as Error).message });
+    }
+  };
+
+  // ── Helpers ───────────────────────────────────────────────────────────────────
 
   private _getDaysRemaining(dueDate: string): number {
     if (!dueDate) return 0;
@@ -208,7 +295,7 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
     return Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   }
 
-  // ── Job card ─────────────────────────────────────────────────────────────────
+  // ── Job card ──────────────────────────────────────────────────────────────────
 
   private _renderJobCard(job: IJobOpening): React.ReactNode {
     const days = this._getDaysRemaining(job.dueDate);
@@ -222,6 +309,14 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
     const skills = job.requiredSkills
       ? job.requiredSkills.split(',').map(s => s.trim()).filter(Boolean)
       : [];
+
+    const applyUrl = this.props.applyBaseUrl
+      ? `${this.props.applyBaseUrl}?jobId=${job.id}` +
+        `&title=${encodeURIComponent(job.title)}` +
+        `&dept=${encodeURIComponent(job.department || '')}` +
+        `&exp=${encodeURIComponent(job.experience || '')}` +
+        `&loc=${encodeURIComponent(job.jobLocation || '')}`
+      : '';
 
     return (
       <div key={job.id} className={styles.jobCard}>
@@ -276,40 +371,30 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
           <div className={styles.jobDescSnippet}>{job.jobDescription}</div>
         )}
 
-        {/* External apply link */}
-        {this.props.applyBaseUrl && (() => {
-          const applyUrl =
-            `${this.props.applyBaseUrl}?jobId=${job.id}` +
-            `&title=${encodeURIComponent(job.title)}` +
-            `&dept=${encodeURIComponent(job.department || '')}` +
-            `&exp=${encodeURIComponent(job.experience || '')}` +
-            `&loc=${encodeURIComponent(job.jobLocation || '')}`;
-          return (
-            <div className={styles.externalApplyRow}>
-              <Icon iconName="Link" className={styles.externalApplyIcon} />
-              <span className={styles.externalApplyLabel}>External candidates:</span>
-              <a
-                href={applyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={styles.externalApplyLink}
-                title={applyUrl}
-              >
-                Apply Now
-              </a>
-              <button
-                className={styles.copyLinkBtn}
-                title="Copy application link"
-                onClick={e => {
-                  e.stopPropagation();
-                  navigator.clipboard.writeText(applyUrl).catch(() => undefined);
-                }}
-              >
-                <Icon iconName="Copy" />
-              </button>
-            </div>
-          );
-        })()}
+        {/* Apply Now row — always visible */}
+        <div className={styles.applyNowRow}>
+          <Icon iconName="Send" className={styles.applyNowIcon} />
+          <span className={styles.applyNowLabel}>Interested?</span>
+          <button
+            className={styles.applyNowBtn}
+            onClick={() => this._openDirectPanel(job)}
+          >
+            Apply Now
+          </button>
+          {applyUrl && (
+            <button
+              className={styles.copyLinkBtn}
+              title="Copy external application link"
+              onClick={e => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(applyUrl).catch(() => undefined);
+              }}
+            >
+              <Icon iconName="Copy" />
+              <span>Copy Link</span>
+            </button>
+          )}
+        </div>
 
         <div className={styles.cardFooter}>
           <span className={`${styles.daysLabel} ${daysClass}`}>{daysText}</span>
@@ -324,7 +409,7 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
     );
   }
 
-  // ── Apply panel ───────────────────────────────────────────────────────────────
+  // ── Referral panel ────────────────────────────────────────────────────────────
 
   private _renderApplyPanel(): React.ReactNode {
     const {
@@ -362,8 +447,6 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
       >
         {applyingToJob && (
           <Stack tokens={{ childrenGap: 0, padding: '16px 0' }}>
-
-            {/* Job summary */}
             <div className={styles.panelJobSummary}>
               <div className={styles.panelJobTitle}>{applyingToJob.title}</div>
               <div className={styles.panelJobMeta}>
@@ -383,7 +466,6 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
               </MessageBar>
             )}
 
-            {/* ── Candidate details ── */}
             <div className={styles.sectionHeading}>Candidate Details</div>
 
             <Stack tokens={{ childrenGap: 12 }}>
@@ -412,7 +494,6 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
                 disabled={submitting}
               />
 
-              {/* Resume upload */}
               <div>
                 <label className={styles.fileLabel}>
                   Resume <span className={styles.required}>*</span>
@@ -467,14 +548,12 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
               </div>
             </Stack>
 
-            {/* ── Referrer details ── */}
             <div className={styles.sectionDivider} />
             <div className={styles.sectionHeading}>
               <Icon iconName="Contact" /> Your Details (Referrer)
             </div>
 
             <Stack tokens={{ childrenGap: 12 }}>
-              {/* Read-only: name + email from AD */}
               <div className={styles.referrerReadonlyRow}>
                 <div className={styles.referrerChip}>
                   <span className={styles.referrerChipLabel}>Name</span>
@@ -503,7 +582,154 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
                 required
               />
             </Stack>
+          </Stack>
+        )}
+      </Panel>
+    );
+  }
 
+  // ── Direct apply panel ────────────────────────────────────────────────────────
+
+  private _renderDirectApplyPanel(): React.ReactNode {
+    const {
+      directPanelOpen, directApplyingToJob,
+      directName, directEmail, directPhone, directResumeFile,
+      directSubmitting, directSubmitError,
+    } = this.state;
+
+    return (
+      <Panel
+        isOpen={directPanelOpen}
+        type={PanelType.medium}
+        headerText={`Apply for: ${directApplyingToJob?.title ?? ''}`}
+        onDismiss={() => this._closeDirectPanel()}
+        isFooterAtBottom
+        onRenderFooterContent={() => (
+          <Stack horizontal tokens={{ childrenGap: 8 }} horizontalAlign="end">
+            <DefaultButton
+              text="Cancel"
+              onClick={() => this._closeDirectPanel()}
+              disabled={directSubmitting}
+            />
+            <PrimaryButton
+              text={directSubmitting ? 'Submitting…' : 'Submit Application'}
+              iconProps={{ iconName: 'Send' }}
+              onClick={() => {
+                this._onDirectSubmit().catch(err =>
+                  this.setState({ directSubmitError: String(err), directSubmitting: false })
+                );
+              }}
+              disabled={!this._isDirectFormValid() || directSubmitting}
+              styles={{ root: { background: '#0078d4', borderColor: '#0078d4' } }}
+            />
+            {directSubmitting && <Spinner size={SpinnerSize.small} />}
+          </Stack>
+        )}
+      >
+        {directApplyingToJob && (
+          <Stack tokens={{ childrenGap: 0, padding: '16px 0' }}>
+            <div className={styles.panelJobSummary}>
+              <div className={styles.panelJobTitle}>{directApplyingToJob.title}</div>
+              <div className={styles.panelJobMeta}>
+                {[directApplyingToJob.department, directApplyingToJob.jobLocation,
+                  directApplyingToJob.jobType, directApplyingToJob.experience]
+                  .filter(Boolean).join(' • ')}
+              </div>
+            </div>
+
+            {directSubmitError && (
+              <MessageBar
+                messageBarType={MessageBarType.error}
+                onDismiss={() => this.setState({ directSubmitError: '' })}
+                styles={{ root: { marginTop: 12 } }}
+              >
+                {directSubmitError}
+              </MessageBar>
+            )}
+
+            <div className={styles.sectionHeading}>
+              <Icon iconName="Contact" /> Your Details
+            </div>
+
+            <Stack tokens={{ childrenGap: 12 }}>
+              <TextField
+                label="Full Name"
+                placeholder="e.g. Rahul Mehta"
+                value={directName}
+                onChange={(_, v) => this.setState({ directName: v ?? '' })}
+                disabled={directSubmitting}
+                required
+              />
+              <TextField
+                label="Email Address"
+                placeholder="e.g. rahul@example.com"
+                value={directEmail}
+                onChange={(_, v) => this.setState({ directEmail: v ?? '' })}
+                disabled={directSubmitting}
+                required
+                type="email"
+              />
+              <TextField
+                label="Phone Number"
+                placeholder="e.g. +91 98765 43210"
+                value={directPhone}
+                onChange={(_, v) => this.setState({ directPhone: v ?? '' })}
+                disabled={directSubmitting}
+              />
+
+              <div>
+                <label className={styles.fileLabel}>
+                  Resume <span className={styles.required}>*</span>
+                </label>
+                <div
+                  className={`${styles.dropZone} ${directResumeFile ? styles.dropZoneHasFile : ''}`}
+                  onClick={() => !directSubmitting && this._directFileInputRef.current?.click()}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => {
+                    e.preventDefault();
+                    if (directSubmitting) return;
+                    const file = e.dataTransfer.files[0];
+                    if (file) this.setState({ directResumeFile: file });
+                  }}
+                >
+                  <input
+                    ref={this._directFileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    style={{ display: 'none' }}
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) this.setState({ directResumeFile: file });
+                    }}
+                  />
+                  {directResumeFile ? (
+                    <div className={styles.fileSelected}>
+                      <Icon iconName="TextDocument" />
+                      <span>{directResumeFile.name}</span>
+                      <button
+                        className={styles.removeFile}
+                        onClick={e => {
+                          e.stopPropagation();
+                          this.setState({ directResumeFile: undefined });
+                          if (this._directFileInputRef.current) this._directFileInputRef.current.value = '';
+                        }}
+                        aria-label="Remove file"
+                        disabled={directSubmitting}
+                      >×</button>
+                    </div>
+                  ) : (
+                    <div className={styles.dropPrompt}>
+                      <Icon iconName="Upload" className={styles.uploadIcon} />
+                      <span>Click to browse or drag &amp; drop</span>
+                      <span className={styles.fileHint}>PDF, DOC, DOCX · Max 10 MB</span>
+                    </div>
+                  )}
+                </div>
+                <p className={styles.folderNote}>
+                  Resume will be saved in the <strong>Direct</strong> folder for this position.
+                </p>
+              </div>
+            </Stack>
           </Stack>
         )}
       </Panel>
@@ -513,7 +739,7 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
   // ── Root render ───────────────────────────────────────────────────────────────
 
   public render(): React.ReactElement {
-    const { jobs, loading, error, successJobTitle } = this.state;
+    const { jobs, loading, error, successJobTitle, directSuccessTitle } = this.state;
 
     return (
       <div className={styles.container}>
@@ -521,7 +747,7 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
         <div className={styles.pageHeader}>
           <Text variant="xLarge" className={styles.pageTitle}>Ongoing Positions</Text>
           <Text variant="medium" className={styles.pageSubtitle}>
-            Browse open roles and refer a colleague or submit your own application
+            Browse open roles — apply directly or refer a colleague
           </Text>
         </div>
 
@@ -532,6 +758,16 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
             styles={{ root: { marginBottom: 16 } }}
           >
             Referral submitted for <strong>{successJobTitle}</strong>! HR has been notified with your details.
+          </MessageBar>
+        )}
+
+        {directSuccessTitle && (
+          <MessageBar
+            messageBarType={MessageBarType.success}
+            onDismiss={() => this.setState({ directSuccessTitle: '' })}
+            styles={{ root: { marginBottom: 16 } }}
+          >
+            Application submitted for <strong>{directSuccessTitle}</strong>! HR will review your profile and be in touch.
           </MessageBar>
         )}
 
@@ -564,6 +800,7 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
         )}
 
         {this._renderApplyPanel()}
+        {this._renderDirectApplyPanel()}
 
       </div>
     );
