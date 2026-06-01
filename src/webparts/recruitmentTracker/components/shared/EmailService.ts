@@ -1,9 +1,9 @@
 import { GraphService } from './GraphService';
 import { IJobOpening, ICandidate, IInterview } from './models';
 
-const HR_EMAILS = ['hr1@company.onmicrosoft.com', 'hr2@company.onmicrosoft.com'];
+const HR_EMAILS = ['tulsidas.rp@operative.com'];
 const COMPANY_NAME = 'OpATS Recruitment';
-const SITE_URL = 'https://yourtenant.sharepoint.com/sites/recruitment';
+const SITE_URL = 'https://sintecmedia365.sharepoint.com';
 
 function emailShell(title: string, bodyContent: string): string {
   return `
@@ -182,7 +182,7 @@ export class EmailService {
     const dueDate = job.dueDate ? new Date(job.dueDate).toLocaleDateString('en-GB') : '—';
     const resumeLink = resumeUrl
       ? `<div class="field"><div class="label">Resume (${referral ? 'Referred' : 'Direct'})</div>
-         <div class="value"><a href="https://yourtenant.sharepoint.com${resumeUrl}" style="color:#0078d4">Download Resume</a></div></div>`
+         <div class="value"><a href="https://sintecmedia365.sharepoint.com${resumeUrl}" style="color:#0078d4">Download Resume</a></div></div>`
       : '';
 
     const referralSection = referral
