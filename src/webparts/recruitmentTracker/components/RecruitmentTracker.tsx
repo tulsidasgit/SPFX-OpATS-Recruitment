@@ -11,6 +11,9 @@ import type { IRecruitmentTrackerProps } from './IRecruitmentTrackerProps';
 import { PostJobForm } from './PostJob/PostJobForm';
 import { TrackProgress } from './TrackProgress/TrackProgress';
 import { OngoingPositions } from './OngoingPositions/OngoingPositions';
+import { CompletedJobs } from './CompletedJobs/CompletedJobs';
+import { AllCandidates } from './AllCandidates/AllCandidates';
+import { isHREmail } from './shared/EmailService';
 
 interface IRecruitmentTrackerState {
   activeTab: string;
@@ -27,6 +30,7 @@ export default class RecruitmentTracker extends React.Component<
 
   public render(): React.ReactElement<IRecruitmentTrackerProps> {
     const { sp, graphService, currentUser, applyBaseUrl } = this.props;
+    const isHR = !!currentUser && isHREmail(currentUser.email);
 
     if (!currentUser || !currentUser.email) {
       return (
@@ -80,18 +84,23 @@ export default class RecruitmentTracker extends React.Component<
             <OngoingPositions sp={sp} graphService={graphService} currentUser={currentUser} applyBaseUrl={applyBaseUrl} />
           </PivotItem>
 
-          <PivotItem headerText="Track Progress" itemKey="trackProgress" itemIcon="ClipboardList">
-            <TrackProgress sp={sp} graphService={graphService} />
-          </PivotItem>
+          {isHR && (
+            <PivotItem headerText="Track Progress" itemKey="trackProgress" itemIcon="ClipboardList">
+              <TrackProgress sp={sp} graphService={graphService} />
+            </PivotItem>
+          )}
 
-          <PivotItem headerText="Completed Jobs" itemKey="completedJobs" itemIcon="CheckMark">
-            <Stack tokens={{ padding: 24 }}>
-              <Text variant="large">Completed Jobs</Text>
-              <Text styles={{ root: { color: '#605e5c' } }}>
-                This tab is coming in Phase 11.
-              </Text>
-            </Stack>
-          </PivotItem>
+          {isHR && (
+            <PivotItem headerText="Completed Jobs" itemKey="completedJobs" itemIcon="CheckMark">
+              <CompletedJobs sp={sp} />
+            </PivotItem>
+          )}
+
+          {isHR && (
+            <PivotItem headerText="All Candidates" itemKey="allCandidates" itemIcon="People">
+              <AllCandidates sp={sp} />
+            </PivotItem>
+          )}
         </Pivot>
       </Stack>
     );

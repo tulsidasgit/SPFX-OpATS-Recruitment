@@ -5,6 +5,16 @@ const HR_EMAILS = ['tulsidas.rp@operative.com'];
 const COMPANY_NAME = 'OpATS Recruitment';
 const SITE_URL = 'https://sintecmedia365.sharepoint.com';
 
+/**
+ * Checks whether an email belongs to the HR list above.
+ * Used to gate access to HR-only tabs (Track Progress, Completed Jobs, All Candidates)
+ * in addition to driving notification recipients — keep HR_EMAILS as the single source of truth.
+ */
+export function isHREmail(email: string): boolean {
+  const normalized = email.trim().toLowerCase();
+  return HR_EMAILS.some(hr => hr.toLowerCase() === normalized);
+}
+
 function emailShell(title: string, bodyContent: string): string {
   return `
 <!DOCTYPE html>
@@ -131,6 +141,44 @@ export class EmailService {
       to: [interview.interviewerEmail],
       cc: HR_EMAILS,
       subject: `[OpATS] Interview Scheduled — ${candidate.candidateName} for ${job.title} (Round ${interview.interviewRound})`,
+      bodyHtml: body,
+    });
+  }
+
+  // ── 2b. Interview scheduled — notify candidate ────────────────────────────
+
+  public async notifyCandidateInterviewScheduled(
+    interview: IInterview,
+    candidate: ICandidate,
+    job: IJobOpening
+  ): Promise<void> {
+    if (!candidate.email) return;
+
+    const scheduledDate = interview.scheduledDate
+      ? new Date(interview.scheduledDate).toLocaleString('en-GB')
+      : '—';
+
+    const body = emailShell(
+      'Your Interview Has Been Scheduled',
+      `<h2>Interview Scheduled — Round ${interview.interviewRound}</h2>
+       <p>Dear ${candidate.candidateName},</p>
+       <p>Thank you for applying to <strong>${COMPANY_NAME}</strong>. Your interview for the position below has been scheduled. Please find the details:</p>
+       <div class="field"><div class="label">Position</div><div class="value">${job.title}</div></div>
+       <div class="field"><div class="label">Department</div><div class="value">${job.department}</div></div>
+       <div class="field"><div class="label">Location</div><div class="value">${job.jobLocation || '—'}</div></div>
+       <hr class="divider"/>
+       <div class="field"><div class="label">Interview Round</div><div class="value">Round ${interview.interviewRound}</div></div>
+       <div class="field"><div class="label">Date &amp; Time</div><div class="value"><strong>${scheduledDate}</strong></div></div>
+       <hr class="divider"/>
+       <p>Please be available a few minutes before the scheduled time. If you have any questions or need to reschedule, reply to this email and our HR team will assist you.</p>
+       <p>We look forward to speaking with you.</p>
+       <p>Best regards,<br/>${COMPANY_NAME} — HR Team</p>`
+    );
+
+    await this._graph.sendEmail({
+      to: [candidate.email],
+      cc: HR_EMAILS,
+      subject: `[${COMPANY_NAME}] Interview Scheduled — ${job.title} (Round ${interview.interviewRound})`,
       bodyHtml: body,
     });
   }

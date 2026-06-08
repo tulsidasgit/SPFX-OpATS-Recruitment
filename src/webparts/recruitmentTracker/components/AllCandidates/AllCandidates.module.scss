@@ -1,0 +1,117 @@
+.container {
+  padding: 24px;
+}
+
+// ── Category sections ────────────────────────────────────────────────────────
+
+.categorySection {
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.categoryHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  cursor: pointer;
+  user-select: none;
+  border-left: 4px solid currentColor;
+
+  &:hover {
+    background: #faf9f8;
+  }
+
+  &:focus {
+    outline: 2px solid #fd800b;
+    outline-offset: -2px;
+  }
+}
+
+.categoryLabel {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex: 1;
+}
+
+.categoryCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 13px;
+  font-size: 13px;
+  font-weight: 700;
+  background: currentColor;
+}
+
+.categoryCountText {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.categoryBody {
+  padding: 0 20px 16px;
+  border-top: 1px solid #edebe9;
+}
+
+// ── Candidate rows (read-only) ───────────────────────────────────────────────
+
+.candidateRow {
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-top: 10px;
+  background: #faf9f8;
+}
+
+.scoreRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.chipGreen { background: #dff6dd; color: #107c10; }
+.chipRed   { background: #fde7e9; color: #a80000; }
+.chipBlue  { background: #deecf9; color: #0078d4; }
+.chipGrey  { background: #edebe9; color: #605e5c; }
+
+.badge      { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #edebe9; color: #605e5c; }
+
+// ── Summary strip ────────────────────────────────────────────────────────────
+
+.summaryStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.summaryChip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 4px;
+  background: #faf9f8;
+  border: 1px solid #edebe9;
+  border-left: 3px solid currentColor;
+}

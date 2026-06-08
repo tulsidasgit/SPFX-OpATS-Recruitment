@@ -45,6 +45,47 @@
 .statusInProgress { background: #deecf9; color: #0078d4; }
 .statusClosed     { background: #edebe9; color: #605e5c; }
 
+// ── Category sections ────────────────────────────────────────────────────────
+
+.categorySection {
+  margin-top: 16px;
+}
+
+.categoryHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 2px solid currentColor;
+  margin-bottom: 4px;
+}
+
+.categoryLabel {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.categoryCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  background: currentColor;
+}
+
+.categoryCountText {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 // ── Candidate Card ───────────────────────────────────────────────────────────
 
 .candidateCard {

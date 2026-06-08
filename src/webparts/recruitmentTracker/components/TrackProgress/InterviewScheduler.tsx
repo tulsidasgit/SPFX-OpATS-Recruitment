@@ -39,7 +39,8 @@ interface IInterviewSchedulerState {
 
 const INTERVIEWER_OPTIONS: IDropdownOption[] = [
   { key: 'interviewer1@company.onmicrosoft.com', text: 'Interviewer 1 (interviewer1@company.onmicrosoft.com)' },
-  { key: 'interviewer2@company.onmicrosoft.com', text: 'Interviewer 2 (interviewer2@company.onmicrosoft.com)' },
+  { key: 'jedidiah.vachan@operative.com', text: 'Jedidiah Vachan (jedidiah.vachan@operative.com)' },
+  { key: 'tulsidas.rp@operative.com', text: 'Tulsidas Patil (tulsidas.rp@operative.com)' }
 ];
 
 const ROUND_OPTIONS: IDropdownOption[] = [
@@ -110,9 +111,14 @@ export class InterviewScheduler extends React.Component<IInterviewSchedulerProps
           feedback: '',
           hrNotes: '',
         };
-        await emailService.notifyInterviewerScheduled(interview, candidate, job);
-      } catch {
-        // Email failure is non-fatal — interview is already created
+        await Promise.all([
+          emailService.notifyInterviewerScheduled(interview, candidate, job),
+          emailService.notifyCandidateInterviewScheduled(interview, candidate, job),
+        ]);
+      } catch (emailErr) {
+        // Email failure is non-fatal — interview is already created.
+        // Logged so a Mail.Send permission/consent issue is visible in the browser console.
+        console.error('[OpATS] Failed to send interview notification emails:', emailErr);
       }
 
       this.setState({ submitting: false });

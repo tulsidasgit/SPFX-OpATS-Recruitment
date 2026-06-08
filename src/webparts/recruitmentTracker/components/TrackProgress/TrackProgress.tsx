@@ -7,12 +7,19 @@ import {
   MessageBar,
   MessageBarType,
   ActionButton,
+  DefaultButton,
+  PrimaryButton,
+  Dialog,
+  DialogType,
+  DialogFooter,
 } from '@fluentui/react';
 import { SPFI } from '@pnp/sp';
 import { SpService } from '../shared/SpService';
 import { GraphService } from '../shared/GraphService';
 import { EmailService } from '../shared/EmailService';
-import { IJobOpening, ICandidate } from '../shared/models';
+import { AIService } from '../shared/AIService';
+import { IJobOpening, ICandidate, IInterview } from '../shared/models';
+import { CATEGORY_ORDER, CATEGORY_CONFIG, deriveCategory } from '../shared/candidateCategory';
 import { CandidateCard } from './CandidateCard';
 import styles from './TrackProgress.module.scss';
 
@@ -27,7 +34,11 @@ interface ITrackProgressState {
   jobsError: string;
   expandedJobIds: Set<number>;
   candidatesMap: Record<number, ICandidate[]>;
+  interviewsMap: Record<number, IInterview[]>;
   loadingCandidatesFor: Set<number>;
+  confirmCloseJobId: number | undefined;
+  closingJobId: number | undefined;
+  closeError: string;
 }
 
 function daysRemaining(dueDateIso: string): number {
@@ -48,18 +59,24 @@ function getStatusClass(status: IJobOpening['status']): string {
 export class TrackProgress extends React.Component<ITrackProgressProps, ITrackProgressState> {
   private _spService: SpService;
   private _emailService: EmailService;
+  private _aiService: AIService;
 
   constructor(props: ITrackProgressProps) {
     super(props);
     this._spService = new SpService(props.sp);
     this._emailService = new EmailService(props.graphService);
+    this._aiService = new AIService();
     this.state = {
       jobs: [],
       loadingJobs: true,
       jobsError: '',
       expandedJobIds: new Set(),
       candidatesMap: {},
+      interviewsMap: {},
       loadingCandidatesFor: new Set(),
+      confirmCloseJobId: undefined,
+      closingJobId: undefined,
+      closeError: '',
     };
   }
 
@@ -97,9 +114,13 @@ export class TrackProgress extends React.Component<ITrackProgressProps, ITrackPr
     this.setState({ loadingCandidatesFor: loading });
 
     try {
-      const candidates = await this._spService.getCandidatesByJobOpening(jobId);
+      const [candidates, interviews] = await Promise.all([
+        this._spService.getCandidatesByJobOpening(jobId),
+        this._spService.getInterviewsByJobOpening(jobId),
+      ]);
       this.setState(prev => ({
         candidatesMap: { ...prev.candidatesMap, [jobId]: candidates },
+        interviewsMap: { ...prev.interviewsMap, [jobId]: interviews },
         loadingCandidatesFor: new Set(Array.from(prev.loadingCandidatesFor).filter(id => id !== jobId)),
       }));
     } catch {
@@ -109,11 +130,97 @@ export class TrackProgress extends React.Component<ITrackProgressProps, ITrackPr
     }
   }
 
+  private _onCandidateUpdated = (updated: ICandidate): void => {
+    this.setState(prev => {
+      const list = prev.candidatesMap[updated.jobOpeningId] ?? [];
+      return {
+        candidatesMap: {
+          ...prev.candidatesMap,
+          [updated.jobOpeningId]: list.map(c => c.id === updated.id ? updated : c),
+        },
+      };
+    });
+  };
+
+  private _refreshInterviewsForJob = (jobId: number): void => {
+    this._spService.getInterviewsByJobOpening(jobId)
+      .then(interviews => {
+        this.setState(prev => ({
+          interviewsMap: { ...prev.interviewsMap, [jobId]: interviews },
+        }));
+      })
+      .catch(() => undefined);
+  };
+
+  private _onConfirmCloseJob = async (): Promise<void> => {
+    const jobId = this.state.confirmCloseJobId;
+    if (jobId === undefined) return;
+
+    this.setState({ confirmCloseJobId: undefined, closingJobId: jobId, closeError: '' });
+    try {
+      await this._spService.updateJobOpeningStatus(jobId, 'Closed');
+      this.setState(prev => ({
+        jobs: prev.jobs.filter(j => j.id !== jobId),
+        expandedJobIds: new Set(Array.from(prev.expandedJobIds).filter(id => id !== jobId)),
+        closingJobId: undefined,
+      }));
+    } catch (err) {
+      this.setState({ closingJobId: undefined, closeError: (err as Error).message });
+    }
+  };
+
+  private _renderCandidateGroups(job: IJobOpening, candidates: ICandidate[], interviews: IInterview[]): React.ReactNode {
+    if (candidates.length === 0) {
+      return (
+        <Text variant="small" styles={{ root: { color: '#605e5c', display: 'block', padding: '12px 0' } }}>
+          No candidates yet. Use the Ongoing Positions tab to refer or add candidates.
+        </Text>
+      );
+    }
+
+    return (
+      <>
+        <Text variant="small" styles={{ root: { color: '#605e5c', display: 'block', padding: '12px 0 0' } }}>
+          {candidates.length} candidate{candidates.length !== 1 ? 's' : ''}
+        </Text>
+        {CATEGORY_ORDER.map(cat => {
+          const group = candidates.filter(c => deriveCategory(c, interviews) === cat);
+          if (group.length === 0) return null;
+          const { label, color } = CATEGORY_CONFIG[cat];
+          return (
+            <div key={cat} className={styles.categorySection}>
+              <div className={styles.categoryHeader} style={{ borderColor: color, color }}>
+                <span className={styles.categoryLabel} style={{ color }}>{label}</span>
+                <span className={styles.categoryCount} style={{ background: color }}>
+                  <span className={styles.categoryCountText}>{group.length}</span>
+                </span>
+              </div>
+              {group.map(c => (
+                <CandidateCard
+                  key={c.id}
+                  candidate={c}
+                  job={job}
+                  spService={this._spService}
+                  emailService={this._emailService}
+                  aiService={this._aiService}
+                  onCandidateUpdated={this._onCandidateUpdated}
+                  onInterviewScheduled={() => this._refreshInterviewsForJob(job.id)}
+                />
+              ))}
+            </div>
+          );
+        })}
+      </>
+    );
+  }
+
   private _renderJobCard(job: IJobOpening): React.ReactNode {
-    const { expandedJobIds, candidatesMap, loadingCandidatesFor } = this.state;
+    const { expandedJobIds, candidatesMap, interviewsMap, loadingCandidatesFor, closingJobId } = this.state;
     const isExpanded = expandedJobIds.has(job.id);
     const candidates = candidatesMap[job.id] ?? [];
+    const interviews = interviewsMap[job.id] ?? [];
     const isLoadingCandidates = loadingCandidatesFor.has(job.id);
+    const isClosing = closingJobId === job.id;
     const days = job.dueDate ? daysRemaining(job.dueDate) : null;
 
     return (
@@ -143,6 +250,16 @@ export class TrackProgress extends React.Component<ITrackProgressProps, ITrackPr
                 {days !== null && ` (${days >= 0 ? `${days}d left` : 'Overdue'})`}
               </Text>
             )}
+            <DefaultButton
+              text={isClosing ? 'Closing…' : 'Close Job'}
+              iconProps={{ iconName: 'Completed' }}
+              onClick={e => {
+                e.stopPropagation();
+                this.setState({ confirmCloseJobId: job.id });
+              }}
+              disabled={isClosing}
+            />
+            {isClosing && <Spinner size={SpinnerSize.small} />}
             <ActionButton
               iconProps={{ iconName: isExpanded ? 'ChevronUp' : 'ChevronDown' }}
               styles={{ root: { padding: 0, height: 'auto', minWidth: 'auto' } }}
@@ -156,25 +273,8 @@ export class TrackProgress extends React.Component<ITrackProgressProps, ITrackPr
           <div className={styles.jobCardBody}>
             {isLoadingCandidates ? (
               <Spinner size={SpinnerSize.medium} label="Loading candidates…" styles={{ root: { padding: 16 } }} />
-            ) : candidates.length === 0 ? (
-              <Text variant="small" styles={{ root: { color: '#605e5c', display: 'block', padding: '12px 0' } }}>
-                No candidates found. Upload resumes to the Resumes library to trigger AI screening.
-              </Text>
             ) : (
-              <>
-                <Text variant="small" styles={{ root: { color: '#605e5c', display: 'block', padding: '12px 0 0' } }}>
-                  {candidates.length} candidate{candidates.length !== 1 ? 's' : ''} — ranked by fitment score
-                </Text>
-                {candidates.map(c => (
-                  <CandidateCard
-                    key={c.id}
-                    candidate={c}
-                    job={job}
-                    spService={this._spService}
-                    emailService={this._emailService}
-                  />
-                ))}
-              </>
+              this._renderCandidateGroups(job, candidates, interviews)
             )}
           </div>
         )}
@@ -183,7 +283,8 @@ export class TrackProgress extends React.Component<ITrackProgressProps, ITrackPr
   }
 
   public render(): React.ReactElement {
-    const { jobs, loadingJobs, jobsError } = this.state;
+    const { jobs, loadingJobs, jobsError, confirmCloseJobId, closeError } = this.state;
+    const confirmCloseJob = confirmCloseJobId !== undefined ? jobs.find(j => j.id === confirmCloseJobId) : undefined;
 
     return (
       <div className={styles.container}>
@@ -213,6 +314,15 @@ export class TrackProgress extends React.Component<ITrackProgressProps, ITrackPr
           </MessageBar>
         )}
 
+        {closeError && (
+          <MessageBar
+            messageBarType={MessageBarType.error}
+            onDismiss={() => this.setState({ closeError: '' })}
+          >
+            {closeError}
+          </MessageBar>
+        )}
+
         {!loadingJobs && !jobsError && jobs.length === 0 && (
           <MessageBar messageBarType={MessageBarType.info}>
             No open or in-progress job openings found. Use the Post Job tab to create one.
@@ -220,6 +330,23 @@ export class TrackProgress extends React.Component<ITrackProgressProps, ITrackPr
         )}
 
         {jobs.map(job => this._renderJobCard(job))}
+
+        {confirmCloseJob && (
+          <Dialog
+            hidden={false}
+            onDismiss={() => this.setState({ confirmCloseJobId: undefined })}
+            dialogContentProps={{
+              type: DialogType.normal,
+              title: 'Close this job opening?',
+              subText: `"${confirmCloseJob.title}" will be marked as Closed, removed from Track Progress, and moved to the Completed Jobs tab. Candidates and interview records are kept and remain visible there.`,
+            }}
+          >
+            <DialogFooter>
+              <PrimaryButton text="Close Job" onClick={() => { this._onConfirmCloseJob().catch(() => undefined); }} />
+              <DefaultButton text="Cancel" onClick={() => this.setState({ confirmCloseJobId: undefined })} />
+            </DialogFooter>
+          </Dialog>
+        )}
       </div>
     );
   }

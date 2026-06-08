@@ -19,12 +19,14 @@ export class GraphService {
       const client = await this._getClient();
       const response = await client
         .api('/me')
-        .select('displayName,mail,userPrincipalName')
-        .get() as { displayName: string; mail: string; userPrincipalName: string };
+        .select('displayName,mail,userPrincipalName,jobTitle,employeeId')
+        .get() as { displayName: string; mail: string; userPrincipalName: string; jobTitle?: string; employeeId?: string };
 
       return {
         displayName: response.displayName ?? 'Unknown User',
         email: response.mail ?? response.userPrincipalName ?? '',
+        jobTitle: response.jobTitle ?? undefined,
+        employeeId: response.employeeId ?? undefined,
       };
     } catch (err) {
       throw new Error(`Failed to get current user: ${(err as Error).message}`);

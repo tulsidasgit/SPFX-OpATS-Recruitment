@@ -13,6 +13,7 @@ import {
 } from '@fluentui/react';
 import { SpService } from '../shared/SpService';
 import { EmailService } from '../shared/EmailService';
+import { AIService } from '../shared/AIService';
 import { ICandidate, IJobOpening, IInterview } from '../shared/models';
 import { InterviewScheduler } from './InterviewScheduler';
 import styles from './TrackProgress.module.scss';
@@ -22,6 +23,9 @@ interface ICandidateCardProps {
   job: IJobOpening;
   spService: SpService;
   emailService: EmailService;
+  aiService: AIService;
+  onCandidateUpdated: (updated: ICandidate) => void;
+  onInterviewScheduled: () => void;
 }
 
 interface ICandidateCardState {
@@ -32,6 +36,10 @@ interface ICandidateCardState {
   showScheduler: boolean;
   interviews: IInterview[];
   loadingInterviews: boolean;
+  screening: boolean;
+  screeningError: string;
+  rejecting: boolean;
+  rejectError: string;
 }
 
 export class CandidateCard extends React.Component<ICandidateCardProps, ICandidateCardState> {
@@ -45,6 +53,10 @@ export class CandidateCard extends React.Component<ICandidateCardProps, ICandida
       showScheduler: false,
       interviews: [],
       loadingInterviews: true,
+      screening: false,
+      screeningError: '',
+      rejecting: false,
+      rejectError: '',
     };
   }
 
@@ -72,9 +84,54 @@ export class CandidateCard extends React.Component<ICandidateCardProps, ICandida
     }
   };
 
+  private _onScreenResume = async (): Promise<void> => {
+    const { candidate, job, spService, aiService, onCandidateUpdated } = this.props;
+    if (!candidate.resumeUrl) {
+      this.setState({ screeningError: 'No resume URL on record for this candidate.' });
+      return;
+    }
+    this.setState({ screening: true, screeningError: '' });
+    try {
+      const resumeText = await spService.fetchResumeText(candidate.resumeUrl);
+      const report = await aiService.screenResume(
+        resumeText,
+        job.jobTitle,
+        job.department,
+        job.requiredSkills,
+        job.experience
+      );
+      await spService.updateCandidateFitment(candidate.id, report);
+      onCandidateUpdated({
+        ...candidate,
+        fitmentScore:    report.fitmentScore,
+        matchingSkills:  report.matchingSkills.join(', '),
+        missingSkills:   report.missingSkills.join(', '),
+        aiSummary:       report.summary,
+        recommendation:  report.recommendation,
+        experienceMatch: report.experienceMatch,
+      });
+      this.setState({ screening: false });
+    } catch (err) {
+      this.setState({ screening: false, screeningError: (err as Error).message });
+    }
+  };
+
+  private _onReject = async (restore: boolean): Promise<void> => {
+    const { candidate, spService, onCandidateUpdated } = this.props;
+    this.setState({ rejecting: true, rejectError: '' });
+    try {
+      await spService.rejectCandidate(candidate.id, restore);
+      onCandidateUpdated({ ...candidate, applicationStatus: restore ? 'Received' : 'Rejected' });
+      this.setState({ rejecting: false });
+    } catch (err) {
+      this.setState({ rejecting: false, rejectError: (err as Error).message });
+    }
+  };
+
   private _onScheduled = async (): Promise<void> => {
     this.setState({ showScheduler: false });
     await this._loadInterviews();
+    this.props.onInterviewScheduled();
   };
 
   private _renderSkillChips(skills: string, chipClass: string): React.ReactNode {
@@ -109,7 +166,10 @@ export class CandidateCard extends React.Component<ICandidateCardProps, ICandida
     const {
       hrFeedback, savingFeedback, feedbackSaved, feedbackError,
       showScheduler, interviews, loadingInterviews,
+      screening, screeningError,
+      rejecting, rejectError,
     } = this.state;
+    const isRejected = candidate.applicationStatus === 'Rejected';
 
     return (
       <div className={styles.candidateCard}>
@@ -182,6 +242,57 @@ export class CandidateCard extends React.Component<ICandidateCardProps, ICandida
             <Text variant="small">{candidate.aiSummary}</Text>
           </div>
         )}
+
+        {/* Screen Resume */}
+        {screeningError && (
+          <MessageBar
+            messageBarType={MessageBarType.error}
+            onDismiss={() => this.setState({ screeningError: '' })}
+            styles={{ root: { marginBottom: 8 } }}
+          >
+            {screeningError}
+          </MessageBar>
+        )}
+        <Stack horizontal tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 12 } }}>
+          <PrimaryButton
+            text={screening ? 'Screening…' : 'Screen Resume'}
+            iconProps={{ iconName: 'Robot' }}
+            onClick={() => { this._onScreenResume().catch(err => this.setState({ screening: false, screeningError: String(err) })); }}
+            disabled={screening || !candidate.resumeUrl}
+            styles={{ root: { background: '#8764b8', border: 'none' } }}
+          />
+          {screening && <Spinner size={SpinnerSize.small} label="Running AI analysis…" />}
+        </Stack>
+
+        {/* Reject / Restore */}
+        {rejectError && (
+          <MessageBar
+            messageBarType={MessageBarType.error}
+            onDismiss={() => this.setState({ rejectError: '' })}
+            styles={{ root: { marginBottom: 8 } }}
+          >
+            {rejectError}
+          </MessageBar>
+        )}
+        <Stack horizontal tokens={{ childrenGap: 8 }} styles={{ root: { marginBottom: 12 } }}>
+          {isRejected ? (
+            <DefaultButton
+              text={rejecting ? 'Restoring…' : 'Restore Candidate'}
+              iconProps={{ iconName: 'Undo' }}
+              onClick={() => { this._onReject(true).catch(err => this.setState({ rejecting: false, rejectError: String(err) })); }}
+              disabled={rejecting}
+            />
+          ) : (
+            <DefaultButton
+              text={rejecting ? 'Rejecting…' : 'Reject'}
+              iconProps={{ iconName: 'Cancel' }}
+              onClick={() => { this._onReject(false).catch(err => this.setState({ rejecting: false, rejectError: String(err) })); }}
+              disabled={rejecting || screening}
+              styles={{ root: { color: '#a80000', borderColor: '#a80000' } }}
+            />
+          )}
+          {rejecting && <Spinner size={SpinnerSize.small} />}
+        </Stack>
 
         {/* HR Feedback */}
         <div className={styles.feedbackSection}>

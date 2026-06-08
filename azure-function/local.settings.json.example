@@ -3,12 +3,10 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "node",
+    "SP_SITE_URL": "https://YOURTENANT.sharepoint.com/sites/YOURSITE",
+    "SP_CLIENT_ID": "← from /_layouts/15/appregnew.aspx (NO Entra/Azure AD admin needed)",
+    "SP_CLIENT_SECRET": "← from /_layouts/15/appregnew.aspx",
     "ANTHROPIC_API_KEY": "← from console.anthropic.com",
-    "CLAUDE_MODEL": "fast",
-    "SP_SITE_URL": "← https://yourtenant.sharepoint.com/sites/recruitment",
-    "SP_TENANT_ID": "← Azure AD → Overview → Tenant ID",
-    "SP_CLIENT_ID": "← Azure AD → App registrations → your app → Application (client) ID",
-    "SP_CLIENT_SECRET": "← Azure AD → App registrations → your app → Certificates & secrets",
-    "CORS_ORIGIN": "← https://your-app.azurestaticapps.net (or * for dev)"
+    "CORS_ORIGIN": "* (dev) or https://your-app.azurestaticapps.net (production)"
   }
 }

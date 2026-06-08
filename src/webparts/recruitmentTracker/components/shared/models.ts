@@ -44,6 +44,7 @@ export interface ICandidate {
   hrFeedback: string;
   recommendation: 'Recommended' | 'Maybe' | 'Not Recommended' | '';
   experienceMatch: 'meets' | 'exceeds' | 'below' | '';
+  applicationStatus?: string;
   referredBy?: string;
   referrerEmail?: string;
   referrerEmployeeId?: string;
@@ -77,6 +78,8 @@ export interface IFitmentReport {
 export interface ICurrentUser {
   displayName: string;
   email: string;
+  jobTitle?: string;
+  employeeId?: string;
 }
 
 export interface IEmailNotification {

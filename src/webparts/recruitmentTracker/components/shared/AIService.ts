@@ -3,16 +3,34 @@ import { ANTHROPIC_API_KEY } from './AIConfig';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 const MAX_TOKENS = 1024;
-const MIN_RESUME_LENGTH = 100;
 const API_URL = 'https://api.anthropic.com/v1/messages';
 
-const SYSTEM_PROMPT = `You are an expert recruitment AI assistant. Analyse the provided resume \
-against the job requirements. Return ONLY valid JSON with absolutely no explanation, \
-no markdown formatting, and no code blocks. Be precise and objective about skill matching.`;
+const PDF_DATA_URI_PREFIX = 'data:application/pdf;base64,';
+
+const SYSTEM_PROMPT = `You are an expert recruitment AI assistant. You will be given a candidate's \
+resume — either as a PDF document or as plain text — and a set of job requirements. Read the ENTIRE \
+resume, including every page of multi-page PDFs, before forming your assessment.
+
+Respond with ONLY valid JSON: no explanation, no markdown formatting, no code fences, no text before \
+or after the JSON object. Every field in the requested schema must be present and have the correct \
+type — use "Unknown", empty arrays, or 0 for anything you cannot determine rather than omitting a \
+field or breaking the JSON structure.
+
+If the resume has no extractable text (e.g. it is a scanned image with no text layer, is corrupted, \
+or is blank), still return the full JSON structure: set "fitmentScore" to 0, "matchingSkills" and \
+"missingSkills" to empty arrays, "recommendation" to "Not Recommended", "experienceMatch" to "below", \
+and use "summary" to state plainly that the resume content could not be read and HR should request a \
+text-based copy. Never refuse to answer or return anything other than the JSON object.
+
+Be precise and objective about skill matching.`;
+
+type IContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'document'; source: { type: 'base64'; media_type: string; data: string } };
 
 interface IAnthropicMessage {
   role: 'user' | 'assistant';
-  content: string;
+  content: string | IContentPart[];
 }
 
 interface IAnthropicRequest {
@@ -60,33 +78,61 @@ async function callClaude(request: IAnthropicRequest): Promise<string> {
   return content.text;
 }
 
-function buildUserPrompt(
+function buildScreeningPrompt(
   jobTitle: string,
   department: string,
   requiredSkills: string,
-  experience: string,
-  resumeText: string
+  experience: string
 ): string {
   return `Job Title: ${jobTitle}
 Department: ${department}
 Required Skills: ${requiredSkills}
 Experience Required: ${experience}
 
-Resume Text:
-${resumeText}
-
-Return exactly this JSON structure with no other text:
+Analyse the resume above against these requirements and return exactly this JSON structure with no other text \
+(no markdown, no code fences, nothing before or after the braces):
 {
-  "candidateName": "full name extracted from resume",
-  "contactEmail": "email address from resume",
-  "contactPhone": "phone number from resume",
+  "candidateName": "full name extracted from resume, or \\"Unknown\\" if not present",
+  "contactEmail": "email address from resume, or \\"\\" if not present",
+  "contactPhone": "phone number from resume, or \\"\\" if not present",
   "matchingSkills": ["skill1", "skill2"],
   "missingSkills": ["skill1", "skill2"],
   "fitmentScore": 75,
   "experienceMatch": "meets",
   "summary": "2-3 sentence objective assessment of this candidate",
   "recommendation": "Recommended"
-}`;
+}
+
+Field constraints — follow these exactly:
+- "fitmentScore" is an integer from 0 to 100.
+- "experienceMatch" must be exactly one of: "meets", "exceeds", "below" — no other values.
+- "recommendation" must be exactly one of: "Recommended", "Maybe", "Not Recommended" — no other values.
+- "matchingSkills" / "missingSkills" are arrays of short strings (skill names only), never null.`;
+}
+
+function buildUserContent(
+  resume: string,
+  jobTitle: string,
+  department: string,
+  requiredSkills: string,
+  experience: string
+): string | IContentPart[] {
+  const prompt = buildScreeningPrompt(jobTitle, department, requiredSkills, experience);
+
+  if (resume.startsWith(PDF_DATA_URI_PREFIX)) {
+    // Resume is a raw PDF — send as a document so Claude can read it natively
+    const base64Data = resume.slice(PDF_DATA_URI_PREFIX.length);
+    return [
+      {
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data: base64Data },
+      },
+      { type: 'text', text: prompt },
+    ];
+  }
+
+  // Plain text resume — embed inline as before
+  return `Resume:\n${resume}\n\n${prompt}`;
 }
 
 function parseReport(raw: string): IFitmentReport {
@@ -174,27 +220,24 @@ Return plain text only — no markdown, no asterisks, no special formatting.`;
   }
 
   public async screenResume(
-    resumeText: string,
+    resume: string,
     jobTitle: string,
     department: string,
     requiredSkills: string,
     experience: string
   ): Promise<IFitmentReport> {
-    if (!resumeText || resumeText.trim().length < MIN_RESUME_LENGTH) {
-      throw new Error(
-        `Resume text is too short (${resumeText?.trim().length ?? 0} characters). ` +
-        `Minimum required: ${MIN_RESUME_LENGTH} characters.`
-      );
+    if (!resume || resume.trim().length === 0) {
+      throw new Error('No resume content provided.');
     }
 
-    const userPrompt = buildUserPrompt(jobTitle, department, requiredSkills, experience, resumeText);
+    const userContent = buildUserContent(resume, jobTitle, department, requiredSkills, experience);
 
     const request: IAnthropicRequest = {
       model: MODEL,
       max_tokens: MAX_TOKENS,
       temperature: 0,
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt }],
+      messages: [{ role: 'user', content: userContent }],
     };
 
     // First attempt
@@ -214,7 +257,7 @@ Return plain text only — no markdown, no asterisks, no special formatting.`;
         const retryRequest: IAnthropicRequest = {
           ...request,
           messages: [
-            { role: 'user', content: userPrompt },
+            { role: 'user', content: userContent },
             { role: 'assistant', content: rawText },
             { role: 'user', content: 'Your previous response was not valid JSON. Return only the JSON object, nothing else.' },
           ],

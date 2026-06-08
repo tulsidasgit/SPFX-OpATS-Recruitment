@@ -113,6 +113,7 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
   // ── Referral panel ────────────────────────────────────────────────────────────
 
   private _openApplyPanel(job: IJobOpening): void {
+    const { currentUser } = this.props;
     this.setState({
       applyPanelOpen: true,
       applyingToJob: job,
@@ -120,8 +121,8 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
       email: '',
       phone: '',
       resumeFile: undefined,
-      referrerEmployeeId: '',
-      referrerDesignation: '',
+      referrerEmployeeId: currentUser.employeeId ?? '',
+      referrerDesignation: currentUser.jobTitle ?? '',
       submitError: '',
     });
   }
@@ -153,6 +154,12 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
     this.setState({ submitting: true, submitError: '' });
 
     try {
+      const alreadyApplied = await this._spService.candidateExistsForJob(email.trim(), applyingToJob.id);
+      if (alreadyApplied) {
+        this.setState({ submitting: false, submitError: 'A candidate with this email has already applied for this position.' });
+        return;
+      }
+
       const resumeUrl = await this._spService.uploadResume(
         applyingToJob.department,
         applyingToJob.jobTitle,
@@ -240,6 +247,12 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
     this.setState({ directSubmitting: true, directSubmitError: '' });
 
     try {
+      const alreadyApplied = await this._spService.candidateExistsForJob(directEmail.trim(), directApplyingToJob.id);
+      if (alreadyApplied) {
+        this.setState({ directSubmitting: false, directSubmitError: 'A candidate with this email has already applied for this position.' });
+        return;
+      }
+
       const resumeUrl = await this._spService.uploadResume(
         directApplyingToJob.department,
         directApplyingToJob.jobTitle,
@@ -568,6 +581,7 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
               <TextField
                 label="Employee ID"
                 placeholder="e.g. EMP-1042"
+                description={this.props.currentUser.employeeId ? 'Auto-filled from your profile — edit if incorrect.' : 'Not found in your profile — please enter it.'}
                 value={referrerEmployeeId}
                 onChange={(_, v) => this.setState({ referrerEmployeeId: v ?? '' })}
                 disabled={submitting}
@@ -576,6 +590,7 @@ export class OngoingPositions extends React.Component<IOngoingPositionsProps, IO
               <TextField
                 label="Your Designation"
                 placeholder="e.g. Senior Software Engineer"
+                description={this.props.currentUser.jobTitle ? 'Auto-filled from your profile — edit if incorrect.' : 'Not found in your profile — please enter it.'}
                 value={referrerDesignation}
                 onChange={(_, v) => this.setState({ referrerDesignation: v ?? '' })}
                 disabled={submitting}

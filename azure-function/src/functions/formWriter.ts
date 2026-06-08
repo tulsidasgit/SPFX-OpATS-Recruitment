@@ -56,18 +56,24 @@ export async function submitApplication(payload: IApplicationPayload): Promise<I
     // Folder may already exist
   }
 
-  const resumeBuffer = Buffer.from(payload.resumeBase64, 'base64');
+  const rawBuf = Buffer.from(payload.resumeBase64, 'base64');
+  // PnP.js addUsingPath expects ArrayBuffer — slice ensures we don't pass a shared backing buffer
+  const resumeData: ArrayBuffer = rawBuf.buffer.slice(
+    rawBuf.byteOffset,
+    rawBuf.byteOffset + rawBuf.byteLength
+  ) as ArrayBuffer;
   const safeFileName = payload.resumeFileName.replace(/[^a-zA-Z0-9._\- ]/g, '_');
   const timestampedName = `${Date.now()}_${safeFileName}`;
 
   const uploadResult = await sp2.web
     .getFolderByServerRelativePath(folderPath)
-    .files.addUsingPath(timestampedName, resumeBuffer, { Overwrite: false });
+    .files.addUsingPath(timestampedName, resumeData, { Overwrite: false });
 
   const resumeUrl = (uploadResult.data as { ServerRelativeUrl?: string }).ServerRelativeUrl ?? '';
 
   // 3 ── Create Candidates list item
   const result = await sp2.web.lists.getByTitle('Candidates').items.add({
+    Title:                   payload.name,
     JobOpeningId:            payload.jobId,
     CandidateName:           payload.name,
     Email:                   payload.email,
@@ -76,16 +82,17 @@ export async function submitApplication(payload: IApplicationPayload): Promise<I
     CurrentCtc:              payload.currentCtc,
     ExpectedCtc:             payload.expectedCtc,
     NoticePeriod:            payload.noticePeriod,
-    Gender:                  payload.gender              ?? '',
-    ReasonForLeaving:        payload.reasonForLeaving    ?? '',
+    Gender:                  payload.gender                 ?? '',
+    ReasonForLeaving:        payload.reasonForLeaving       ?? '',
     WorkCultureExpectation:  payload.workCultureExpectation ?? '',
-    LinkedInProfileUrl:      payload.linkedInUrl         ?? '',
+    LinkedInUrl:             payload.linkedInUrl            ?? '',
     FitmentScore:            0,
-    MatchingSkills:          '',
-    MissingSkills:           '',
-    AISummary:               '',
-    HRFeedback:              '',
+    MatchingSkills:          '[]',
+    MissingSkills:           '[]',
+    AiSummary:               '',
+    HrFeedback:              '',
     ApplicationStatus:       'Received',
+    Source:                  'Direct',
   });
 
   const candidateId = (result.data as { Id: number }).Id;

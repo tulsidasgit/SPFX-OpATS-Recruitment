@@ -10,11 +10,13 @@ import {
   IJobOpening,
   ICandidate,
   IInterview,
+  IFitmentReport,
 } from './models';
 
 export class SpService {
   private _sp: SPFI;
   private _webUrl: string | null = null;
+  private _resumesLibraryUrl: string | null = null;
 
   constructor(sp: SPFI) {
     this._sp = sp;
@@ -178,7 +180,7 @@ export class SpService {
         .items.select(
           'Id', 'JobOpeningId', 'CandidateName', 'Email', 'Phone', 'ResumeUrl',
           'FitmentScore', 'MatchingSkills', 'MissingSkills', 'AISummary',
-          'HRFeedback', 'Recommendation', 'ExperienceMatch'
+          'HRFeedback', 'Recommendation', 'ExperienceMatch', 'ApplicationStatus'
         )
         .filter(`JobOpeningId eq ${jobOpeningId}`)
         .orderBy('FitmentScore', false)();
@@ -186,6 +188,37 @@ export class SpService {
       return items.map(this._mapCandidate);
     } catch (err) {
       throw new Error(`Failed to load candidates: ${(err as Error).message}`);
+    }
+  }
+
+  public async getAllCandidates(): Promise<ICandidate[]> {
+    try {
+      const items = await this._sp.web.lists
+        .getByTitle('Candidates')
+        .items.select(
+          'Id', 'JobOpeningId', 'CandidateName', 'Email', 'Phone', 'ResumeUrl',
+          'FitmentScore', 'MatchingSkills', 'MissingSkills', 'AISummary',
+          'HRFeedback', 'Recommendation', 'ExperienceMatch', 'ApplicationStatus'
+        )
+        .top(5000)();
+
+      return items.map(this._mapCandidate);
+    } catch (err) {
+      throw new Error(`Failed to load candidates: ${(err as Error).message}`);
+    }
+  }
+
+  public async candidateExistsForJob(email: string, jobId: number): Promise<boolean> {
+    try {
+      const safe = email.replace(/'/g, "''");
+      const items = await this._sp.web.lists
+        .getByTitle('Candidates')
+        .items.select('Id')
+        .filter(`JobOpeningId eq ${jobId} and Email eq '${safe}'`)
+        .top(1)();
+      return items.length > 0;
+    } catch {
+      return false;
     }
   }
 
@@ -236,6 +269,74 @@ export class SpService {
     }
   }
 
+  public async updateCandidateFitment(candidateId: number, report: IFitmentReport): Promise<void> {
+    try {
+      await this._sp.web.lists.getByTitle('Candidates').items.getById(candidateId).update({
+        FitmentScore:    report.fitmentScore,
+        MatchingSkills:  report.matchingSkills.join(', '),
+        MissingSkills:   report.missingSkills.join(', '),
+        AISummary:       report.summary,
+        Recommendation:  report.recommendation,
+        ExperienceMatch: report.experienceMatch,
+      });
+    } catch (err) {
+      throw new Error(`Failed to save fitment report: ${(err as Error).message}`);
+    }
+  }
+
+  public async rejectCandidate(candidateId: number, restore = false): Promise<void> {
+    try {
+      await this._sp.web.lists.getByTitle('Candidates').items.getById(candidateId).update({
+        ApplicationStatus: restore ? 'Received' : 'Rejected',
+      });
+    } catch (err) {
+      throw new Error(`Failed to update candidate status: ${(err as Error).message}`);
+    }
+  }
+
+  // Fetches a file from SharePoint and extracts readable text.
+  // Uses pdfjs-dist for PDF parsing (handles compressed streams).
+  // DOCX is not supported in the browser bundle.
+  public async fetchResumeText(rawUrl: string): Promise<string> {
+    // Normalize: strip origin if an absolute URL was stored (e.g. from Power Automate)
+    let serverRelativeUrl = rawUrl;
+    try {
+      const parsed = new URL(rawUrl);
+      serverRelativeUrl = parsed.pathname + parsed.search;
+    } catch {
+      // rawUrl is already server-relative — use as-is
+    }
+
+    const buffer = await this._sp.web
+      .getFileByServerRelativePath(serverRelativeUrl)
+      .getBuffer();
+
+    const ext = serverRelativeUrl.split('.').pop()?.toLowerCase() ?? '';
+
+    if (ext === 'txt' || ext === 'html' || ext === 'htm') {
+      return new TextDecoder('utf-8').decode(buffer);
+    }
+
+    if (ext === 'pdf') {
+      // Send the raw PDF to Claude as a document — no browser-side parsing needed.
+      // Encoded as a data URI so AIService can detect it and use the document content type.
+      const arr = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < arr.length; i++) binary += String.fromCharCode(arr[i]);
+      return 'data:application/pdf;base64,' + btoa(binary);
+    }
+
+    if (ext === 'docx' || ext === 'doc') {
+      throw new Error('DOCX files cannot be parsed in the browser. Please re-upload the resume as .pdf or .txt.');
+    }
+
+    const fallback = new TextDecoder('utf-8').decode(buffer);
+    if (fallback.trim().length < 50) {
+      throw new Error(`Unsupported resume format (.${ext}). Please upload a .pdf or .txt file.`);
+    }
+    return fallback;
+  }
+
   // ── Interviews ─────────────────────────────────────────────────────────────
 
   public async getInterviewsByCandidate(candidateId: number): Promise<IInterview[]> {
@@ -248,6 +349,38 @@ export class SpService {
         )
         .filter(`CandidateId eq ${candidateId}`)
         .orderBy('InterviewRound')();
+
+      return items.map(this._mapInterview);
+    } catch (err) {
+      throw new Error(`Failed to load interviews: ${(err as Error).message}`);
+    }
+  }
+
+  public async getInterviewsByJobOpening(jobId: number): Promise<IInterview[]> {
+    try {
+      const items = await this._sp.web.lists
+        .getByTitle('Interviews')
+        .items.select(
+          'Id', 'CandidateId', 'JobOpeningId', 'InterviewRound',
+          'InterviewerEmail', 'ScheduledDate', 'FeedbackStatus', 'Feedback', 'HRNotes'
+        )
+        .filter(`JobOpeningId eq ${jobId}`)
+        .orderBy('InterviewRound')();
+      return items.map(this._mapInterview);
+    } catch (err) {
+      throw new Error(`Failed to load interviews: ${(err as Error).message}`);
+    }
+  }
+
+  public async getAllInterviews(): Promise<IInterview[]> {
+    try {
+      const items = await this._sp.web.lists
+        .getByTitle('Interviews')
+        .items.select(
+          'Id', 'CandidateId', 'JobOpeningId', 'InterviewRound',
+          'InterviewerEmail', 'ScheduledDate', 'FeedbackStatus', 'Feedback', 'HRNotes'
+        )
+        .top(5000)();
 
       return items.map(this._mapInterview);
     } catch (err) {
@@ -305,16 +438,24 @@ export class SpService {
     const sanitize = (s: string): string => s.replace(/[^a-zA-Z0-9_\- ]/g, '').trim();
     const deptFolder = sanitize(department);
     const jtFolder = sanitize(jobTitle);
-    const basePath = `Resumes/${deptFolder}/${jtFolder}`;
+    const libUrl = await this._getResumesLibraryUrl(); // e.g. "/Resumes"
 
-    for (const path of [basePath, `${basePath}/Referred`, `${basePath}/Direct`]) {
+    // addUsingPath does not create parent folders — create each level explicitly
+    const levels = [
+      `${libUrl}/${deptFolder}`,
+      `${libUrl}/${deptFolder}/${jtFolder}`,
+      `${libUrl}/${deptFolder}/${jtFolder}/Direct`,
+      `${libUrl}/${deptFolder}/${jtFolder}/Referred`,
+    ];
+
+    for (const absPath of levels) {
       try {
-        await this._sp.web.folders.addUsingPath(path, true);
+        await this._sp.web.folders.addUsingPath(absPath, true);
       } catch {
-        // Folder may already exist — continue
+        // Folder already exists — continue
       }
     }
-    return basePath;
+    return `${deptFolder}/${jtFolder}`;
   }
 
   // ── JD Template ───────────────────────────────────────────────────────────
@@ -363,16 +504,15 @@ export class SpService {
     subfolder: 'Referred' | 'Direct' = 'Direct'
   ): Promise<string> {
     await this.ensureResumeFolder(department, jobTitle);
-    const webUrl = await this._getWebUrl();
     const sanitize = (s: string): string => s.replace(/[^a-zA-Z0-9_\- ]/g, '').trim();
-    const basePath = `Resumes/${sanitize(department)}/${sanitize(jobTitle)}`;
+    const libUrl = await this._getResumesLibraryUrl(); // e.g. "/Resumes"
     const sanitizedName = candidateName
       .replace(/[^a-zA-Z0-9_\- ]/g, '')
       .trim()
       .replace(/ /g, '_');
     const ext = file.name.split('.').pop() ?? 'pdf';
     const fileName = `${sanitizedName}_${Date.now()}.${ext}`;
-    const serverRelFolderPath = `${webUrl}/${basePath}/${subfolder}`;
+    const serverRelFolderPath = `${libUrl}/${sanitize(department)}/${sanitize(jobTitle)}/${subfolder}`;
 
     const buffer = await file.arrayBuffer();
     const result = await this._sp.web
@@ -391,6 +531,20 @@ export class SpService {
         .ServerRelativeUrl.replace(/\/$/, '');
     }
     return this._webUrl;
+  }
+
+  // Returns the server-relative root URL of the Resumes document library,
+  // e.g. "/Resumes" for root-site or "/sites/HR/Resumes" for a subsite.
+  private async _getResumesLibraryUrl(): Promise<string> {
+    if (!this._resumesLibraryUrl) {
+      const folder = await this._sp.web.lists
+        .getByTitle('Resumes')
+        .rootFolder
+        .select('ServerRelativeUrl')();
+      this._resumesLibraryUrl = (folder as unknown as { ServerRelativeUrl: string })
+        .ServerRelativeUrl.replace(/\/$/, '');
+    }
+    return this._resumesLibraryUrl;
   }
 
   // ── Private mappers ────────────────────────────────────────────────────────
@@ -430,6 +584,7 @@ export class SpService {
       hrFeedback: (i.HRFeedback as string) ?? '',
       recommendation: (i.Recommendation as ICandidate['recommendation']) ?? '',
       experienceMatch: (i.ExperienceMatch as ICandidate['experienceMatch']) ?? '',
+      applicationStatus: (i.ApplicationStatus as string) ?? undefined,
       referredBy: (i.ReferredBy as string) ?? undefined,
       referrerEmail: (i.ReferrerEmail as string) ?? undefined,
       referrerEmployeeId: (i.ReferrerEmployeeId as string) ?? undefined,
