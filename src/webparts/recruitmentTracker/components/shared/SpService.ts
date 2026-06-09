@@ -82,7 +82,7 @@ export class SpService {
     try {
       const items = await this._sp.web.lists
         .getByTitle('JobOpenings')
-        .items.select('Id', 'Title', 'Department', 'JobTitle', 'RequiredSkills', 'GoodToHaveSkills', 'JobLocation', 'JobType', 'Experience', 'DueDate', 'Status', 'PostedBy', 'LinkedInUrl', 'JobDescription')
+        .items.select('Id', 'Title', 'Department', 'JobTitle', 'RequiredSkills', 'GoodToHaveSkills', 'JobLocation', 'JobType', 'Experience', 'DueDate', 'Status', 'PostedBy', 'LinkedInUrl', 'JobDescription', 'Created', 'Modified')
         .filter("Status eq 'Closed'")
         .orderBy('Modified', false)();
 
@@ -566,6 +566,8 @@ export class SpService {
       linkedInUrl: (i.LinkedInUrl as string) ?? '',
       jobDescription: (i.JobDescription as string) ?? '',
       applicationFormUrl: (i.ApplicationFormUrl as string) ?? '',
+      created: (i.Created as string) ?? undefined,
+      modified: (i.Modified as string) ?? undefined,
     };
   }
 

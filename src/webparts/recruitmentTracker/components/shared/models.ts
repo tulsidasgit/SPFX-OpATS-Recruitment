@@ -28,6 +28,8 @@ export interface IJobOpening {
   linkedInUrl?: string;
   jobDescription?: string;
   applicationFormUrl?: string;
+  created?: string;   // SharePoint Created date (ISO string)
+  modified?: string;  // SharePoint Modified date — approximates when job was closed
 }
 
 export interface ICandidate {
