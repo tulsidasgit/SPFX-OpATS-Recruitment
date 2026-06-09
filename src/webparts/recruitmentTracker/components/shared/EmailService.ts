@@ -109,38 +109,95 @@ export class EmailService {
       ? new Date(interview.scheduledDate).toLocaleString('en-GB')
       : '—';
 
+    const scoreClass = candidate.fitmentScore >= 75 ? 'badge-green'
+      : candidate.fitmentScore >= 50 ? 'badge-orange' : 'badge-red';
+
+    const expClass = candidate.experienceMatch === 'exceeds' ? 'badge-green'
+      : candidate.experienceMatch === 'meets' ? 'badge-blue' : 'badge-red';
+
+    const recClass = candidate.recommendation === 'Recommended' ? 'badge-green'
+      : candidate.recommendation === 'Maybe' ? 'badge-orange' : 'badge-red';
+
+    const skillChips = (skills: string, color: string): string =>
+      skills
+        ? skills.split(',').map(s => s.trim()).filter(Boolean)
+            .map(s => `<span style="display:inline-block;background:${color};padding:2px 8px;border-radius:10px;font-size:12px;font-weight:500;margin:2px 3px 2px 0">${s}</span>`)
+            .join('')
+        : '<span style="color:#605e5c">None identified</span>';
+
+    const resumeLink = candidate.resumeUrl
+      ? `<a href="${SITE_URL}${candidate.resumeUrl}" style="color:#0078d4;font-weight:600">Download Resume</a>`
+      : '<span style="color:#605e5c">Not uploaded</span>';
+
+    const hrFeedbackSection = candidate.hrFeedback
+      ? `<hr class="divider"/>
+         <h2>HR Feedback</h2>
+         <div style="background:#fff4ce;border-left:3px solid #f7630c;padding:10px 14px;border-radius:0 4px 4px 0;margin:8px 0">
+           ${candidate.hrFeedback}
+         </div>`
+      : '';
+
     const body = emailShell(
       'Interview Scheduled',
       `<h2>Interview Invitation — Round ${interview.interviewRound}</h2>
-       <p>You have been assigned to interview a candidate for the following position:</p>
+       <p>You have been assigned to interview a candidate. Please review all details below before the interview.</p>
+
+       <div class="field"><div class="label">Scheduled Date &amp; Time</div><div class="value"><strong>${scheduledDate}</strong></div></div>
+       <div class="field"><div class="label">Interview Round</div><div class="value"><strong>Round ${interview.interviewRound}</strong></div></div>
+
+       <hr class="divider"/>
+       <h2>Position Details</h2>
        <div class="field"><div class="label">Job Title</div><div class="value">${job.title}</div></div>
        <div class="field"><div class="label">Department</div><div class="value">${job.department}</div></div>
+       <div class="field"><div class="label">Location</div><div class="value">${job.jobLocation || '—'}</div></div>
+       <div class="field"><div class="label">Job Type</div><div class="value">${job.jobType || '—'}</div></div>
+       <div class="field"><div class="label">Experience Required</div><div class="value">${job.experience || '—'}</div></div>
+       <div class="field"><div class="label">Required Skills</div><div class="value">${skillChips(job.requiredSkills, '#deecf9')}</div></div>
+       ${job.goodToHaveSkills ? `<div class="field"><div class="label">Good to Have</div><div class="value">${skillChips(job.goodToHaveSkills, '#f3f2f1')}</div></div>` : ''}
+
        <hr class="divider"/>
        <h2>Candidate Details</h2>
-       <div class="field"><div class="label">Candidate Name</div><div class="value">${candidate.candidateName}</div></div>
+       <div class="field"><div class="label">Name</div><div class="value"><strong>${candidate.candidateName}</strong></div></div>
        <div class="field"><div class="label">Email</div><div class="value">${candidate.email}</div></div>
-       <div class="field"><div class="label">Phone</div><div class="value">${candidate.phone}</div></div>
+       <div class="field"><div class="label">Phone</div><div class="value">${candidate.phone || '—'}</div></div>
+       <div class="field"><div class="label">Resume</div><div class="value">${resumeLink}</div></div>
+
+       <hr class="divider"/>
+       <h2>AI Screening Report</h2>
        <div class="field">
-         <div class="label">AI Fitment Score</div>
+         <div class="label">Fitment Score</div>
          <div class="value">
-           <span class="badge ${candidate.fitmentScore >= 75 ? 'badge-green' : candidate.fitmentScore >= 50 ? 'badge-orange' : 'badge-red'}">
-             ${candidate.fitmentScore}%
-           </span>
+           <span class="badge ${scoreClass}" style="font-size:15px;padding:4px 14px">${candidate.fitmentScore}%</span>
          </div>
        </div>
-       <div class="field"><div class="label">AI Summary</div><div class="value">${candidate.aiSummary}</div></div>
-       <div class="field"><div class="label">Matching Skills</div><div class="value">${candidate.matchingSkills}</div></div>
+       <div class="field">
+         <div class="label">Recommendation</div>
+         <div class="value"><span class="badge ${recClass}">${candidate.recommendation || 'Pending'}</span></div>
+       </div>
+       <div class="field">
+         <div class="label">Experience Match</div>
+         <div class="value"><span class="badge ${expClass}">${candidate.experienceMatch || '—'}</span></div>
+       </div>
+       <div class="field"><div class="label">Matching Skills</div><div class="value">${skillChips(candidate.matchingSkills, '#dff6dd')}</div></div>
+       <div class="field"><div class="label">Missing Skills</div><div class="value">${skillChips(candidate.missingSkills, '#fde7e9')}</div></div>
+       ${candidate.aiSummary
+         ? `<div style="background:#f0f6ff;border-left:3px solid #0078d4;padding:10px 14px;border-radius:0 4px 4px 0;margin:8px 0">
+              <div style="font-size:12px;font-weight:600;color:#0078d4;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px">AI Assessment</div>
+              ${candidate.aiSummary}
+            </div>`
+         : ''}
+
+       ${hrFeedbackSection}
+
        <hr class="divider"/>
-       <div class="field"><div class="label">Scheduled Date &amp; Time</div><div class="value">${scheduledDate}</div></div>
-       <div class="field"><div class="label">Interview Round</div><div class="value">${interview.interviewRound}</div></div>
-       <p>Please submit your feedback in the Recruitment Tracker after the interview.</p>
+       <p>Please submit your interview feedback in the Recruitment Tracker immediately after the interview.</p>
        <a class="btn" href="${SITE_URL}">Open Recruitment Tracker</a>`
     );
 
     await this._graph.sendEmail({
       to: [interview.interviewerEmail],
       cc: HR_EMAILS,
-      subject: `[OpATS] Interview Scheduled — ${candidate.candidateName} for ${job.title} (Round ${interview.interviewRound})`,
+      subject: `[OpATS] Interview Scheduled — ${candidate.candidateName} for ${job.title} (Round ${interview.interviewRound}) | Score: ${candidate.fitmentScore}%`,
       bodyHtml: body,
     });
   }

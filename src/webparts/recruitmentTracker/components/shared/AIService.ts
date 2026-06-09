@@ -219,6 +219,46 @@ Return plain text only — no markdown, no asterisks, no special formatting.`;
     });
   }
 
+  public async generateScreeningQuestions(
+    candidate: { candidateName: string; fitmentScore: number; matchingSkills: string; missingSkills: string; aiSummary: string; hrFeedback: string },
+    job: { jobTitle: string; department: string; requiredSkills: string; goodToHaveSkills: string; experience: string }
+  ): Promise<string[]> {
+    const prompt = `You are a senior technical interviewer. Generate exactly 8 targeted interview questions for this candidate and role.
+
+Role: ${job.jobTitle} — ${job.department}
+Experience Required: ${job.experience}
+Required Skills: ${job.requiredSkills}
+${job.goodToHaveSkills ? `Good To Have: ${job.goodToHaveSkills}` : ''}
+
+Candidate: ${candidate.candidateName}
+Fitment Score: ${candidate.fitmentScore}%
+Matching Skills: ${candidate.matchingSkills || 'None identified'}
+Missing Skills: ${candidate.missingSkills || 'None identified'}
+AI Assessment: ${candidate.aiSummary || 'Not available'}
+${candidate.hrFeedback ? `HR Notes: ${candidate.hrFeedback}` : ''}
+
+Question criteria:
+- 3 questions verifying depth in matching skills (scenario-based, not "do you know X?")
+- 3 questions probing missing skills or learning ability to bridge gaps
+- 2 behavioral/situational questions specific to this role
+
+Return ONLY a JSON array of 8 strings. No explanation, no numbering, no markdown:
+["question one", "question two", ...]`;
+
+    const rawText = await callClaude({
+      model: MODEL,
+      max_tokens: 1024,
+      temperature: 0.5,
+      system: 'You are a senior technical interviewer. Return only a valid JSON array of strings. No explanation, no markdown, no text outside the JSON array.',
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const cleaned = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleaned) as unknown[];
+    if (!Array.isArray(parsed)) throw new Error('Expected array from AI');
+    return parsed.map(String);
+  }
+
   public async screenResume(
     resume: string,
     jobTitle: string,

@@ -367,6 +367,7 @@ export class CandidateCard extends React.Component<ICandidateCardProps, ICandida
             job={job}
             spService={spService}
             emailService={emailService}
+            aiService={this.props.aiService}
             onDismiss={() => this.setState({ showScheduler: false })}
             onScheduled={() => { this._onScheduled().catch(() => undefined); }}
           />
