@@ -139,7 +139,7 @@ export class InterviewScheduler extends React.Component<IInterviewSchedulerProps
         ]);
       } catch (emailErr) {
         // Email failure is non-fatal — interview is already created.
-        console.error('[OpATS] Failed to send interview notification emails:', emailErr);
+        console.error('[OpRea] Failed to send interview notification emails:', emailErr);
       }
 
       this.setState({ submitting: false });

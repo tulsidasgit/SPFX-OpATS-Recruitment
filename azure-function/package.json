@@ -1,7 +1,7 @@
 {
   "name": "opats-azure-functions",
   "version": "1.0.0",
-  "description": "OpATS Azure Functions — job details API + candidate application submission",
+  "description": "OpRea Azure Functions — job details API + candidate application submission",
   "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc",

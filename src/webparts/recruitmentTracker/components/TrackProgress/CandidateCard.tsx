@@ -346,16 +346,28 @@ export class CandidateCard extends React.Component<ICandidateCardProps, ICandida
               Interview History
             </Text>
             {interviews.map(iv => (
-              <div key={iv.id} className={styles.interviewRow}>
-                <span className={styles.roundBadge}>Rd {iv.interviewRound}</span>
-                <Text variant="small" styles={{ root: { flex: 1 } }}>{iv.interviewerEmail}</Text>
-                <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
-                  {iv.scheduledDate ? new Date(iv.scheduledDate).toLocaleString('en-GB') : '—'}
-                </Text>
-                <span className={`${styles.chip} ${iv.feedbackStatus === 'Submitted' ? styles.chipGreen : styles.chipOrange}`}>
-                  {iv.feedbackStatus}
-                </span>
-              </div>
+              <React.Fragment key={iv.id}>
+                <div className={styles.interviewRow}>
+                  <span className={styles.roundBadge}>Rd {iv.interviewRound}</span>
+                  <Text variant="small" styles={{ root: { flex: 1 } }}>{iv.interviewerEmail}</Text>
+                  <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
+                    {iv.scheduledDate ? new Date(iv.scheduledDate).toLocaleString('en-GB') : '—'}
+                  </Text>
+                  <span className={`${styles.chip} ${iv.feedbackStatus === 'Submitted' ? styles.chipGreen : styles.chipOrange}`}>
+                    {iv.feedbackStatus}
+                  </span>
+                </div>
+                {iv.feedbackStatus === 'Submitted' && iv.feedback && (
+                  <div style={{ margin: '0 0 6px 0', padding: '8px 12px', background: '#f0f6ff', borderRadius: 4, borderLeft: '3px solid #0078d4' }}>
+                    <Text variant="xSmall" styles={{ root: { fontWeight: 700, color: '#0078d4', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 4 } }}>
+                      Interviewer Feedback
+                    </Text>
+                    <Text variant="small" styles={{ root: { whiteSpace: 'pre-wrap', color: '#323130' } }}>
+                      {iv.feedback}
+                    </Text>
+                  </div>
+                )}
+              </React.Fragment>
             ))}
           </div>
         )}

@@ -1,4 +1,4 @@
-// ── Domain models for OpATS — Recruitment & Application Tracking System ──
+// ── Domain models for OpRea — Recruitment & Application Tracking System ──
 
 export interface IDepartment {
   id: number;

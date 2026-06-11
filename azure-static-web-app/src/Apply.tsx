@@ -191,7 +191,7 @@ export default function Apply({ jobId }: IProps): React.ReactElement {
       {/* Header */}
       <header className="apply-header">
         <div className="apply-header-inner">
-          <span className="company-name">OpATS</span>
+          <span className="company-name">OpRea</span>
           <span className="header-sep">|</span>
           <span className="header-label">Recruitment Portal</span>
         </div>
@@ -452,7 +452,7 @@ export default function Apply({ jobId }: IProps): React.ReactElement {
       </main>
 
       <footer className="apply-footer">
-        <p>Powered by OpATS · {new Date().getFullYear()}</p>
+        <p>Powered by OpRea · {new Date().getFullYear()}</p>
       </footer>
     </div>
   );

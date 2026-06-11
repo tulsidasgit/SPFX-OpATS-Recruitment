@@ -68,7 +68,7 @@ export default class RecruitmentTrackerWebPart extends BaseClientSideWebPart<IRe
     return {
       pages: [
         {
-          header: { description: 'OpATS — Recruitment Tracker Configuration' },
+          header: { description: 'OpRea — Recruitment Tracker Configuration' },
           groups: [
             {
               groupName: 'Candidate Application Form',

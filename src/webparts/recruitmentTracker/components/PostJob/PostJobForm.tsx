@@ -56,7 +56,6 @@ interface IPostJobFormState {
   jobType: IJobOpening['jobType'];
   experience: string;
   dueDate: Date | undefined;
-  linkedInUrl: string;
 
   // Submission
   submitting: boolean;
@@ -71,6 +70,8 @@ interface IPostJobFormState {
   applyUrl: string;
   linkCopied: boolean;
   pendingJobId: number | undefined;   // job created during JD generation, before JD is saved
+  savingJD: boolean;
+  jdSaved: boolean;
 }
 
 const EXPERIENCE_OPTIONS: IDropdownOption[] = [
@@ -130,7 +131,6 @@ export class PostJobForm extends React.Component<IPostJobFormProps, IPostJobForm
       jobType: '',
       experience: '',
       dueDate: undefined,
-      linkedInUrl: '',
       submitting: false,
       error: '',
       successJobRef: undefined,
@@ -141,6 +141,8 @@ export class PostJobForm extends React.Component<IPostJobFormProps, IPostJobForm
       applyUrl: '',
       linkCopied: false,
       pendingJobId: undefined,
+      savingJD: false,
+      jdSaved: false,
     };
   }
 
@@ -262,61 +264,6 @@ export class PostJobForm extends React.Component<IPostJobFormProps, IPostJobForm
     );
   }
 
-  private _onSubmit = async (): Promise<void> => {
-    if (!this._isFormValid()) return;
-    this.setState({ submitting: true, error: '' });
-
-    try {
-      const {
-        selectedDeptName, selectedJobTitleName,
-        mustHaveSkills, goodToHaveSkills,
-        jobLocation, jobType,
-        experience, dueDate, linkedInUrl,
-      } = this.state;
-
-      const jobPayload: Omit<IJobOpening, 'id'> = {
-        title: `${selectedJobTitleName} — ${selectedDeptName}`,
-        department: selectedDeptName,
-        jobTitle: selectedJobTitleName,
-        requiredSkills: mustHaveSkills.join(', '),
-        goodToHaveSkills: goodToHaveSkills.join(', '),
-        jobLocation,
-        jobType: jobType as IJobOpening['jobType'],
-        experience,
-        dueDate: dueDate!.toISOString(),
-        status: 'Open',
-        postedBy: this.props.currentUser.email,
-        linkedInUrl,
-      };
-
-      const jobId = await this._spService.createJobOpening(jobPayload);
-
-      // Build and persist the apply URL
-      const applyUrl = this.props.applyBaseUrl
-        ? `${this.props.applyBaseUrl.replace(/\/$/, '')}/apply?jobId=${jobId}`
-        : '';
-      if (applyUrl) {
-        await this._spService.updateJobOpeningApplicationUrl(jobId, applyUrl);
-      }
-
-      await this._spService.ensureResumeFolder(selectedDeptName, selectedJobTitleName);
-
-      try {
-        await this._emailService.notifyHRJobPosted(
-          { id: jobId, ...jobPayload },
-          this.props.currentUser.displayName
-        );
-      } catch {
-        // Email failure is non-fatal
-      }
-
-      this.setState({ submitting: false, successJobRef: jobId });
-      this._resetForm();
-    } catch (err) {
-      this.setState({ submitting: false, error: (err as Error).message });
-    }
-  };
-
   private _resetForm(): void {
     this.setState({
       selectedDeptId: undefined,
@@ -331,13 +278,14 @@ export class PostJobForm extends React.Component<IPostJobFormProps, IPostJobForm
       jobType: '',
       experience: '',
       dueDate: undefined,
-      linkedInUrl: '',
       showJDPanel: false,
       jobDescription: '',
       jdError: '',
       applyUrl: '',
       linkCopied: false,
       pendingJobId: undefined,
+      savingJD: false,
+      jdSaved: false,
     });
   }
 
@@ -348,7 +296,7 @@ export class PostJobForm extends React.Component<IPostJobFormProps, IPostJobForm
     try {
       const {
         selectedJobTitleName, selectedDeptName, jobLocation, jobType,
-        mustHaveSkills, goodToHaveSkills, experience, dueDate, linkedInUrl,
+        mustHaveSkills, goodToHaveSkills, experience, dueDate,
         pendingJobId,
       } = this.state;
 
@@ -370,7 +318,6 @@ export class PostJobForm extends React.Component<IPostJobFormProps, IPostJobForm
           dueDate: dueDate!.toISOString(),
           status: 'Open',
           postedBy: this.props.currentUser.email,
-          linkedInUrl,
         };
         jobId = await this._spService.createJobOpening(jobPayload);
 
@@ -405,9 +352,23 @@ export class PostJobForm extends React.Component<IPostJobFormProps, IPostJobForm
     }
   }
 
-  // Job is already created — just save the edited JD text back to SharePoint
-  private _onPostWithJD = async (): Promise<void> => {
-    const { pendingJobId, jobDescription, selectedDeptName, selectedJobTitleName } = this.state;
+  // Job is already created — save the edited JD text back to SharePoint without posting
+  private _onSaveJD = async (): Promise<void> => {
+    const { pendingJobId, jobDescription } = this.state;
+    if (!pendingJobId) return;
+
+    this.setState({ savingJD: true, jdError: '' });
+    try {
+      await this._spService.updateJobDescription(pendingJobId, jobDescription);
+      this.setState({ savingJD: false, jdSaved: true });
+    } catch (err) {
+      this.setState({ savingJD: false, jdError: (err as Error).message });
+    }
+  };
+
+  // Save the JD text and notify HR that the job is posted
+  private _onPostJob = async (): Promise<void> => {
+    const { pendingJobId, jobDescription } = this.state;
     if (!pendingJobId) return;
 
     this.setState({ submitting: true, jdError: '' });
@@ -481,7 +442,7 @@ export class PostJobForm extends React.Component<IPostJobFormProps, IPostJobForm
       checkingPermission, isAllowedPoster,
       departments, jobTitles, loadingDepts, loadingTitles,
       selectedDeptId, selectedJobTitleId,
-      jobLocation, jobType, experience, dueDate, linkedInUrl,
+      jobLocation, jobType, experience, dueDate,
       submitting, error, successJobRef,
     } = this.state;
 
@@ -524,7 +485,7 @@ export class PostJobForm extends React.Component<IPostJobFormProps, IPostJobForm
     return (
       <>
       <div className={styles.container}>
-        <p className={styles.formTitle}>Post a New Job Opening</p>
+        <p className={styles.formTitle}>Create Job Description</p>
         <p className={styles.formSubtitle}>
           Posting as <strong>{this.props.currentUser.displayName}</strong>
         </p>
@@ -623,15 +584,6 @@ export class PostJobForm extends React.Component<IPostJobFormProps, IPostJobForm
             />
           </div>
 
-          {/* Row 6 — LinkedIn URL */}
-          <TextField
-            label="LinkedIn Job URL (optional)"
-            placeholder="https://linkedin.com/jobs/..."
-            value={linkedInUrl}
-            onChange={(_, v) => this.setState({ linkedInUrl: v ?? '' })}
-            disabled={submitting}
-          />
-
           {/* Actions */}
           <div className={styles.actions}>
             <PrimaryButton
@@ -639,13 +591,6 @@ export class PostJobForm extends React.Component<IPostJobFormProps, IPostJobForm
               iconProps={{ iconName: 'EditNote' }}
               onClick={() => { this._openJDPanel().catch(err => this.setState({ jdError: String(err) })); }}
               disabled={!this._isFormValid() || submitting}
-            />
-            <DefaultButton
-              text={submitting ? 'Posting…' : 'Quick Post'}
-              iconProps={{ iconName: 'Send' }}
-              onClick={() => { this._onSubmit().catch(err => this.setState({ error: String(err) })); }}
-              disabled={!this._isFormValid() || submitting}
-              title="Post job immediately without generating a job description"
             />
             {submitting && <Spinner size={SpinnerSize.small} />}
             <DefaultButton
@@ -667,7 +612,7 @@ export class PostJobForm extends React.Component<IPostJobFormProps, IPostJobForm
   private _renderJDPanel(): React.ReactNode {
     const { showJDPanel, generatingJD, jobDescription, jdError, submitting,
             selectedJobTitleName, selectedDeptName, jobLocation, jobType, experience,
-            applyUrl, linkCopied } = this.state;
+            applyUrl, linkCopied, savingJD, jdSaved } = this.state;
     if (!showJDPanel) return null;
 
     const wordCount = jobDescription.trim()
@@ -693,15 +638,21 @@ export class PostJobForm extends React.Component<IPostJobFormProps, IPostJobForm
               <DefaultButton
                 text="Cancel"
                 onClick={() => this.setState({ showJDPanel: false })}
-                disabled={submitting}
+                disabled={submitting || savingJD}
+              />
+              <DefaultButton
+                text={savingJD ? 'Saving…' : (jdSaved ? '✓ Saved' : 'Save JD')}
+                iconProps={{ iconName: 'Save' }}
+                onClick={() => { this._onSaveJD().catch(err => this.setState({ jdError: String(err) })); }}
+                disabled={generatingJD || submitting || savingJD || !jobDescription.trim()}
               />
               <PrimaryButton
-                text={submitting ? 'Saving…' : 'Save Job Description'}
-                iconProps={{ iconName: 'Save' }}
-                onClick={() => { this._onPostWithJD().catch(err => this.setState({ jdError: String(err) })); }}
-                disabled={generatingJD || submitting || !jobDescription.trim()}
+                text={submitting ? 'Posting…' : 'Post Job'}
+                iconProps={{ iconName: 'Send' }}
+                onClick={() => { this._onPostJob().catch(err => this.setState({ jdError: String(err) })); }}
+                disabled={generatingJD || submitting || savingJD || !jobDescription.trim()}
               />
-              {submitting && <Spinner size={SpinnerSize.small} />}
+              {(submitting || savingJD) && <Spinner size={SpinnerSize.small} />}
             </Stack>
           </div>
         )}
@@ -767,7 +718,7 @@ export class PostJobForm extends React.Component<IPostJobFormProps, IPostJobForm
               multiline
               rows={24}
               value={jobDescription}
-              onChange={(_, v) => this.setState({ jobDescription: v ?? '' })}
+              onChange={(_, v) => this.setState({ jobDescription: v ?? '', jdSaved: false })}
               disabled={submitting}
               styles={{
                 field: {

@@ -264,7 +264,7 @@ function buildReportHtml(job: IJobOpening, candidates: ICandidate[], interviews:
 
   <!-- Report header -->
   <div style="background:#0078d4;padding:28px 40px;position:relative">
-    <div style="font-size:11px;color:#c7e0f4;font-weight:600;letter-spacing:1px;text-transform:uppercase">OpATS — Recruitment Report</div>
+    <div style="font-size:11px;color:#c7e0f4;font-weight:600;letter-spacing:1px;text-transform:uppercase">OpRea — Recruitment Report</div>
     <div style="font-size:22px;font-weight:700;color:#fff;margin-top:6px">${escHtml(job.title)}</div>
     <div style="font-size:13px;color:#c7e0f4;margin-top:4px">${escHtml(job.department)}${job.jobLocation ? ' · ' + escHtml(job.jobLocation) : ''}</div>
     <div style="position:absolute;top:28px;right:40px;font-size:11px;color:#c7e0f4;font-weight:600;letter-spacing:1px">CONFIDENTIAL &nbsp;|&nbsp; Generated ${generatedAt}</div>
@@ -321,7 +321,7 @@ function buildReportHtml(job: IJobOpening, candidates: ICandidate[], interviews:
 
   <!-- Footer -->
   <div style="background:#f3f2f1;padding:14px 40px;display:flex;justify-content:space-between;font-size:11px;color:#605e5c;border-top:1px solid #edebe9">
-    <span>OpATS &mdash; Confidential Recruitment Report &mdash; ${escHtml(job.title)}</span>
+    <span>OpRea &mdash; Confidential Recruitment Report &mdash; ${escHtml(job.title)}</span>
     <span>Generated: ${generatedAt}</span>
   </div>
 </body>

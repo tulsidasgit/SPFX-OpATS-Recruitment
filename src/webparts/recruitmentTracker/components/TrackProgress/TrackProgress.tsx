@@ -338,6 +338,15 @@ export class TrackProgress extends React.Component<ITrackProgressProps, ITrackPr
                               </span>
                             </div>
                           )}
+                          {/* Interviewer feedback — shown when submitted */}
+                          {interview && interview.feedbackStatus === 'Submitted' && interview.feedback && (
+                            <div style={{ marginTop: 6, padding: '7px 10px', background: '#f0f6ff', borderRadius: 4, borderLeft: '3px solid #0078d4', fontSize: 12 }}>
+                              <span style={{ fontWeight: 700, color: '#0078d4', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                Interviewer Feedback:{' '}
+                              </span>
+                              <span style={{ color: '#323130', whiteSpace: 'pre-wrap' }}>{interview.feedback}</span>
+                            </div>
+                          )}
 
                           {/* HR feedback — Rejected candidates only */}
                           {cat === 'Rejected' && c.hrFeedback && (

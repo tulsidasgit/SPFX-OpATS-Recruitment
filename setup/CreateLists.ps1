@@ -2,7 +2,7 @@
 <#
 .SYNOPSIS
     Creates all SharePoint lists, document libraries, and sample data
-    for the Recruitment & Application Tracking System (OpATS).
+    for the Recruitment & Application Tracking System (OpRea).
 
 .PARAMETER SiteUrl
     The full URL of the target SharePoint site.
@@ -21,7 +21,7 @@ $ErrorActionPreference = "Stop"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  OpATS — SharePoint Setup Script" -ForegroundColor Cyan
+Write-Host "  OpRea — SharePoint Setup Script" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 

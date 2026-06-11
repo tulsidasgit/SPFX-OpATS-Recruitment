@@ -259,6 +259,39 @@ Return ONLY a JSON array of 8 strings. No explanation, no numbering, no markdown
     return parsed.map(String);
   }
 
+  public async polishFeedback(
+    rawFeedback: string,
+    candidateName: string,
+    jobTitle: string,
+    round: string
+  ): Promise<string> {
+    const prompt = `You are a professional HR consultant. Rewrite the interview feedback below in a clear, professional, and constructive manner suitable for formal HR records.
+
+Candidate: ${candidateName}
+Role: ${jobTitle}
+Interview Round: ${round}
+
+Raw Feedback:
+${rawFeedback}
+
+Instructions:
+- Preserve every factual observation from the original — do not add or invent anything
+- Use professional language, complete sentences, and structured paragraphs
+- Organise content under these headings: Assessment, Strengths, Areas for Development, Recommendation
+- Be specific and objective; avoid vague phrases
+- Keep it concise (under 300 words)
+
+Return ONLY the polished feedback text. No preamble, no meta-commentary.`;
+
+    return callClaude({
+      model: MODEL,
+      max_tokens: 1024,
+      temperature: 0.3,
+      system: 'You are a professional HR consultant. Return only the polished feedback text with clear section headings. No introduction or closing remarks.',
+      messages: [{ role: 'user', content: prompt }],
+    });
+  }
+
   public async screenResume(
     resume: string,
     jobTitle: string,

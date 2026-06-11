@@ -2,7 +2,7 @@ import { GraphService } from './GraphService';
 import { IJobOpening, ICandidate, IInterview } from './models';
 
 const HR_EMAILS = ['tulsidas.rp@operative.com'];
-const COMPANY_NAME = 'OpATS Recruitment';
+const COMPANY_NAME = 'OpRea Recruitment';
 const SITE_URL = 'https://sintecmedia365.sharepoint.com';
 
 /**
@@ -93,7 +93,7 @@ export class EmailService {
 
     await this._graph.sendEmail({
       to: HR_EMAILS,
-      subject: `[OpATS] New Job Posted: ${job.title} — ${job.department}`,
+      subject: `[OpRea] New Job Posted: ${job.title} — ${job.department}`,
       bodyHtml: body,
     });
   }
@@ -197,7 +197,7 @@ export class EmailService {
     await this._graph.sendEmail({
       to: [interview.interviewerEmail],
       cc: HR_EMAILS,
-      subject: `[OpATS] Interview Scheduled — ${candidate.candidateName} for ${job.title} (Round ${interview.interviewRound}) | Score: ${candidate.fitmentScore}%`,
+      subject: `[OpRea] Interview Scheduled — ${candidate.candidateName} for ${job.title} (Round ${interview.interviewRound}) | Score: ${candidate.fitmentScore}%`,
       bodyHtml: body,
     });
   }
@@ -269,7 +269,7 @@ export class EmailService {
 
     await this._graph.sendEmail({
       to: HR_EMAILS,
-      subject: `[OpATS] ESCALATION: Feedback Overdue — ${candidate.candidateName} / ${job.title}`,
+      subject: `[OpRea] ESCALATION: Feedback Overdue — ${candidate.candidateName} / ${job.title}`,
       bodyHtml: body,
     });
   }
@@ -329,8 +329,8 @@ export class EmailService {
     await this._graph.sendEmail({
       to: HR_EMAILS,
       subject: referral
-        ? `[OpATS] Referral: ${candidateName} → ${job.title} (by ${referral.referredBy})`
-        : `[OpATS] New Application: ${candidateName} → ${job.title} (${job.department})`,
+        ? `[OpRea] Referral: ${candidateName} → ${job.title} (by ${referral.referredBy})`
+        : `[OpRea] New Application: ${candidateName} → ${job.title} (${job.department})`,
       bodyHtml: body,
     });
   }
@@ -385,7 +385,7 @@ export class EmailService {
 
     await this._graph.sendEmail({
       to: HR_EMAILS,
-      subject: `[OpATS] Fitment Report Ready: ${job.title} — ${candidates.length} candidate(s) screened`,
+      subject: `[OpRea] Fitment Report Ready: ${job.title} — ${candidates.length} candidate(s) screened`,
       bodyHtml: body,
     });
   }

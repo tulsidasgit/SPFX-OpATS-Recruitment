@@ -422,6 +422,34 @@ export class SpService {
     }
   }
 
+  public async getInterviewsByInterviewer(email: string): Promise<IInterview[]> {
+    try {
+      const safe = email.replace(/'/g, "''");
+      const items = await this._sp.web.lists
+        .getByTitle('Interviews')
+        .items.select(
+          'Id', 'CandidateId', 'JobOpeningId', 'InterviewRound',
+          'InterviewerEmail', 'ScheduledDate', 'FeedbackStatus', 'Feedback', 'HRNotes'
+        )
+        .filter(`InterviewerEmail eq '${safe}'`)
+        .orderBy('ScheduledDate', false)();
+      return items.map(this._mapInterview);
+    } catch (err) {
+      throw new Error(`Failed to load interviews: ${(err as Error).message}`);
+    }
+  }
+
+  public async submitInterviewFeedback(interviewId: number, feedback: string): Promise<void> {
+    try {
+      await this._sp.web.lists.getByTitle('Interviews').items.getById(interviewId).update({
+        Feedback: feedback,
+        FeedbackStatus: 'Submitted',
+      });
+    } catch (err) {
+      throw new Error(`Failed to submit interview feedback: ${(err as Error).message}`);
+    }
+  }
+
   public async updateHRNotes(interviewId: number, hrNotes: string): Promise<void> {
     try {
       await this._sp.web.lists.getByTitle('Interviews').items.getById(interviewId).update({
